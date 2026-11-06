@@ -46,7 +46,8 @@
   .tag{flex:none;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px}
   .tag.in{background:#dcfce7;color:#166534}
   .tag.out{background:#e2e8f0;color:#475569}
-  .actions{display:flex;gap:8px;margin-top:12px}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .btn.nav{background:#0ea5e9;border-color:#0ea5e9;color:#fff}
   button{font:inherit;cursor:pointer}
   .btn{padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);font-weight:600}
   .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -168,7 +169,7 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=29';
+import { initMap } from './map.js?v=30';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
@@ -296,7 +297,7 @@ function carCard(v){
       ${v.note?`<span>📝 ${esc(v.note)}</span>`:''}
       ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}
     </div>
-    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}<button class="btn grow" data-act="edit">Επεξεργασία</button><button class="btn go grow" data-act="exit">Έφυγε ✓</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>`:
+    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}${mapApi?.coords?.(v.location, v.mapId)?'<button class="btn grow nav" data-act="nav">🧭 Πλοήγηση</button>':''}<button class="btn grow" data-act="edit">Επεξεργασία</button><button class="btn go grow" data-act="exit">Έφυγε ✓</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>`:
       `<div class="actions"><button class="btn grow" data-act="again">Ξανά στο παρκινγκ</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>`}
     </div></div>
   </div>`;
@@ -728,6 +729,7 @@ $('#list').addEventListener('click', async e=>{
     return;
   }
   const v = all.find(x=>x.id===btn.closest('.card').dataset.id); if(!v) return;
+  if (btn.dataset.act==='nav'){ const c = mapApi.coords(v.location, v.mapId); if (c) window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}&travelmode=walking`, '_blank'); else toast('Δεν υπάρχουν συντεταγμένες για τη θέση'); return; }
   if (btn.dataset.act==='map') mapApi.open({ mode:'browse', focus: v.location, mapId: v.mapId });
   if (btn.dataset.act==='edit') openForm(v);
   if (btn.dataset.act==='again'){ ensureStaff(); openForm({...v, __again:true}); }

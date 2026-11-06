@@ -981,5 +981,17 @@ export function initMap(ctx){
   }
   function close(){ if (dlg.open) dlg.close(); }
   function refresh(){ if (dlg.open){ renderAll(); } }
-  return { open, close, refresh, warm: () => { ensureLive().catch(()=>{}); }, hasSpot: (label, mapId) => { if (!label) return false; const k = key(label), ids = mapId && (allSpots[mapId]||allShapes[mapId]) ? [mapId] : Object.keys({...allSpots, ...allShapes}); return ids.some(id => (allSpots[id]||[]).some(p => key(p.l)===k) || (allShapes[id]||[]).some(s => s.n && key(s.n)===k)); }, spotCount: () => remote.list.length };
+  return { open, close, refresh, warm: () => { ensureLive().catch(()=>{}); },
+    // συντεταγμένες (lat,lng) του οχήματος: θέση ή κέντρο ονομασμένης ζώνης, μόνο σε live χάρτες
+    coords: (label, mapId) => {
+      if (!label) return null; const k = key(label), ids = mapId && (allSpots[mapId]||allShapes[mapId]) ? [mapId] : Object.keys({ ...allSpots, ...allShapes });
+      for (const id of ids){
+        if (maps.find(x => x.id===id)?.type!=='live') continue;
+        const sp = (allSpots[id]||[]).find(p => key(p.l)===k); if (sp) return { lat:+sp.y, lng:+sp.x };
+        const sh = (allShapes[id]||[]).find(s => s.n && key(s.n)===k && Array.isArray(s.pts) && s.pts.length);
+        if (sh){ const n = sh.pts.length; return { lat: sh.pts.reduce((a,p)=>a+(+p[1]),0)/n, lng: sh.pts.reduce((a,p)=>a+(+p[0]),0)/n }; }
+      }
+      return null;
+    },
+    hasSpot: (label, mapId) => { if (!label) return false; const k = key(label), ids = mapId && (allSpots[mapId]||allShapes[mapId]) ? [mapId] : Object.keys({...allSpots, ...allShapes}); return ids.some(id => (allSpots[id]||[]).some(p => key(p.l)===k) || (allShapes[id]||[]).some(s => s.n && key(s.n)===k)); }, spotCount: () => remote.list.length };
 }
