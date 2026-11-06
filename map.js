@@ -37,11 +37,15 @@ const CSS = `
 .mp-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
 .mp-svg polyline{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-width:4px}
 .mp-svg polyline.hit{stroke:transparent;stroke-width:24px}
+.mp-svg polygon{stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-width:4px}
+.mp-svg polygon.hit{fill:transparent;stroke:transparent;stroke-width:24px}
+.shp-l{position:absolute;transform:translate(-50%,-50%);font-size:max(11px,calc(var(--sp)*.5));font-weight:700;color:#fff;background:rgba(0,0,0,.62);padding:1px 8px;border-radius:6px;line-height:1.3;white-space:nowrap;pointer-events:none}
 .shp{position:absolute;box-sizing:border-box;border:3px solid;border-radius:4px;pointer-events:none}
 .shp b{display:inline-block;font-size:max(11px,calc(var(--sp)*.5));color:#fff;background:rgba(0,0,0,.6);padding:1px 7px;border-radius:0 0 6px 0;line-height:1.3;white-space:nowrap;overflow:hidden;max-width:100%}
 .shp.prev{border-style:dashed}
 #mapDlg.erase .shp{pointer-events:auto}
 #mapDlg.erase .mp-svg polyline.hit{pointer-events:stroke}
+#mapDlg.erase .mp-svg polygon.hit{pointer-events:all}
 .mp-tools{display:flex;gap:6px;flex-wrap:wrap;width:100%;align-items:center}
 .mp-tool{padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--text);font-size:15px;font-weight:600}
 .mp-tool.on{border-color:var(--accent);background:var(--accent);color:#fff}
@@ -230,6 +234,49 @@ async function captureView(L, map){
   return c;
 }
 
+/* ---------- Ομορφιά ελεύθερου σχεδίου: ευθύγραμμα τμήματα, ίσιες γωνίες, κλειστά σχήματα ---------- */
+function rdp(p, eps){
+  if (p.length<3) return p;
+  const a = p[0], b = p[p.length-1], dx = b[0]-a[0], dy = b[1]-a[1], L = Math.hypot(dx,dy) || 1e-9;
+  let dm = 0, ix = 0;
+  for (let i=1;i<p.length-1;i++){ const d = Math.abs(dy*(p[i][0]-a[0]) - dx*(p[i][1]-a[1]))/L; if (d>dm){ dm = d; ix = i; } }
+  if (dm<=eps) return [a,b];
+  return rdp(p.slice(0,ix+1), eps).slice(0,-1).concat(rdp(p.slice(ix), eps));
+}
+const polyArea = p => Math.abs(p.reduce((s,q,i)=>{ const r = p[(i+1)%p.length]; return s + q[0]*r[1] - r[0]*q[1]; }, 0))/2;
+// pts σε % της εικόνας, W/H σε εικονοστοιχεία. Επιστρέφει {t:'p'|'g'|'r', ...}
+function beautify(pts, W, H){
+  const P = pts.map(q => [q[0]*W/100, q[1]*H/100]), S = Math.max(W,H);
+  const xs = P.map(q=>q[0]), ys = P.map(q=>q[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), diag = Math.hypot(x1-x0, y1-y0);
+  const closed = P.length>=8 && Math.hypot(P[0][0]-P[P.length-1][0], P[0][1]-P[P.length-1][1]) < Math.max(.03*S, diag*.2);
+  let eps = Math.max(.018*S, diag*.05);
+  const snap = (q, loop) => {
+    for (let i=0;i<q.length-(loop?0:1);i++){
+      const a = q[i], b = q[(i+1)%q.length], dx = b[0]-a[0], dy = b[1]-a[1];
+      if (Math.abs(dy) <= Math.abs(dx)*.16) b[1] = a[1]; else if (Math.abs(dx) <= Math.abs(dy)*.16) b[0] = a[0];
+    }
+    return q;
+  };
+  const back = q => q.map(r => [ +(r[0]*100/W).toFixed(2), +(r[1]*100/H).toFixed(2) ]);
+  if (closed){
+    let s;
+    // κλειστή διαδρομή: σπάμε στο πιο μακρινό σημείο από την αρχή (το rdp θέλει διαφορετικά άκρα)
+    let far = 0, fd = -1; P.forEach((q,i) => { const d = Math.hypot(q[0]-P[0][0], q[1]-P[0][1]); if (d>fd){ fd = d; far = i; } });
+    for (let k=0;k<6;k++){
+      const A = rdp(P.slice(0,far+1), eps), B = rdp(P.slice(far).concat([P[0]]), eps);
+      s = A.concat(B.slice(1)).slice(0,-1); if (s.length<=9) break; eps *= 1.4;
+    }
+    if (s.length>=3){
+      if (s.length<=6 && polyArea(s) > .8*(x1-x0)*(y1-y0))
+        return { t:'r', x:+(x0*100/W).toFixed(2), y:+(y0*100/H).toFixed(2), w:+((x1-x0)*100/W).toFixed(2), h:+((y1-y0)*100/H).toFixed(2) };
+      return { t:'g', pts: back(snap(s.map(r=>[...r]), true)) };
+    }
+  }
+  const s = rdp(P, eps);
+  return { t:'p', pts: back(snap(s.map(r=>[...r]), false)) };
+}
+
 export function zoneOf(label){ return String(label||'').replace(/\d+.*$/,'').replace(/[^A-Za-zΑ-Ωα-ω]/g,'').toUpperCase() || '—'; }
 export function nextLabel(l){
   const m = /^(.*?)(\d+)$/.exec(String(l||''));
@@ -365,17 +412,26 @@ export function initMap(ctx){
       drawing.el.setAttribute('points', drawing.pts.map(p=>p.join(',')).join(' '));
     }
   }
+  // Κάθε σχήμα παίρνει υποχρεωτικά όνομα (προτείνεται αυτόματα, αν ακυρώσεις δεν αποθηκεύεται)
+  function askName(){
+    const def = 'Ζώνη '+(doc.shapes.length+1);
+    const n = prompt('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος):', def);
+    return n===null ? null : (n.trim() || def);
+  }
   function drawEnd(){
     const d = drawing; drawing = null; d.el?.remove();
     if (d.type==='rect'){
       if (d.x1==null) return;
       const w = Math.abs(d.x1-d.x0), h = Math.abs(d.y1-d.y0);
       if (w<0.8 || h<0.8) return;
-      const name = (prompt('Όνομα περιοχής (προαιρετικό, π.χ. Ζώνη Α · VIP):','')||'').trim();
+      const name = askName(); if (name===null) return;
       mutate(()=>doc.shapes.push({ t:'r', x:+Math.min(d.x0,d.x1).toFixed(2), y:+Math.min(d.y0,d.y1).toFixed(2), w:+w.toFixed(2), h:+h.toFixed(2), c:color, n:name }));
     } else {
       if (d.pts.length<2) return;
-      mutate(()=>doc.shapes.push({ t:'p', pts:d.pts, c:color }));
+      const o = beautify(d.pts, mapImg?.w || 1000, mapImg?.h || 1000);
+      if (o.t==='p' && o.pts.length<2) return;
+      const name = askName(); if (name===null) return;
+      mutate(()=>doc.shapes.push({ ...o, c:color, n:name }));
     }
   }
 
@@ -425,6 +481,7 @@ export function initMap(ctx){
     if (sp) return spotTap(+sp.dataset.i);
     if (editing){
       if (tool==='erase'){ const sh = target.closest?.('[data-si]'); if (sh){ const i = +sh.dataset.si; mutate(()=>doc.shapes.splice(i,1)); } return; }
+      if (tool==='pan'){ const sh = target.closest?.('[data-si]'); if (sh){ const i = +sh.dataset.si, n = prompt('Όνομα περιοχής:', doc.shapes[i]?.n || ''); if (n!==null && n.trim()) mutate(()=>{ doc.shapes[i].n = n.trim(); }); } return; }
       if (tool==='spot'){
         const q = pointPct(e.clientX, e.clientY);
         if (q.x<0||q.x>100||q.y<0||q.y>100) return;
@@ -521,7 +578,7 @@ export function initMap(ctx){
           if (sh.t==='r'){
             const x0 = Math.max(0, X(sh.x)), y0 = Math.max(0, Y(sh.y)), x1 = Math.min(100, X(sh.x+sh.w)), y1 = Math.min(100, Y(sh.y+sh.h));
             if (x1-x0 >= 0.8 && y1-y0 >= 0.8) shapes.push({ ...sh, x:+x0.toFixed(2), y:+y0.toFixed(2), w:+(x1-x0).toFixed(2), h:+(y1-y0).toFixed(2) });
-          } else if (sh.t==='p' && Array.isArray(sh.pts)){
+          } else if ((sh.t==='p' || sh.t==='g') && Array.isArray(sh.pts)){
             const pts = sh.pts.map(q => [ +X(q[0]).toFixed(2), +Y(q[1]).toFixed(2) ]);
             if (pts.some(q => inside(q[0],q[1]))) shapes.push({ ...sh, pts });
           }
@@ -595,11 +652,11 @@ export function initMap(ctx){
   function renderFoot(){
     if (editing){
       const HINT = {
-        pan:   'Σύρε για να κινήσεις τον χάρτη. Με δύο δάχτυλα κάνεις zoom σε οποιοδήποτε εργαλείο.',
+        pan:   'Σύρε για να κινήσεις τον χάρτη. Πάτα ένα σχήμα για να αλλάξεις το όνομά του. Με δύο δάχτυλα κάνεις zoom.',
         spot:  startLabel ? `Πάτα στον χάρτη για να μπει η θέση <b>${esc(startLabel)}</b>` : 'Πάτα στον χάρτη για να βάλεις θέση (παίρνουν αυτόματα το επόμενο νούμερο). Σύρε μια θέση για να τη μετακινήσεις, πάτα πάνω της για μετονομασία ή διαγραφή.',
         rect:  'Σύρε στον χάρτη για να ζωγραφίσεις ορθογώνιο (π.χ. μια ζώνη). Μετά μπορείς να του δώσεις όνομα. Με δύο δάχτυλα κάνεις zoom/μετακίνηση.',
-        pen:   'Σύρε για ελεύθερο σχέδιο (γραμμές, βέλη, περιγράμματα). Με δύο δάχτυλα κάνεις zoom/μετακίνηση.',
-        erase: 'Πάτα ένα ορθογώνιο ή μια γραμμή για να τη σβήσεις.',
+        pen:   'Σύρε ελεύθερα: η γραμμή ισιώνει αυτόματα και αν κλείσεις το σχήμα γίνεται περιοχή. Μετά του δίνεις όνομα.',
+        erase: 'Πάτα ένα σχήμα (ορθογώνιο, περιοχή ή γραμμή) για να το σβήσεις.',
       }[tool];
       const TOOLS = [['pan','✋','Κίνηση'],['spot','📍','Θέσεις'],['rect','▭','Ορθογώνιο'],['pen','✏️','Σχέδιο'],['erase','🗑','Σβήσιμο']];
       foot.innerHTML = `<div class="hint">${HINT}</div>
@@ -618,15 +675,23 @@ export function initMap(ctx){
   function renderShapes(){
     const rects = doc.shapes.map((sh,i) => sh.t!=='r' ? '' :
       `<div class="shp" data-si="${i}" style="left:${+sh.x}%;top:${+sh.y}%;width:${+sh.w}%;height:${+sh.h}%;border-color:${safeColor(sh.c)};background:${safeColor(sh.c)}2e">${sh.n?`<b>${esc(sh.n)}</b>`:''}</div>`).join('');
+    let labels = '';
     const lines = doc.shapes.map((sh,i) => {
-      if (sh.t!=='p' || !Array.isArray(sh.pts)) return '';
-      const pts = sh.pts.map(p=>`${+p[0]},${+p[1]}`).join(' ');
-      return `<polyline points="${pts}" stroke="${safeColor(sh.c)}"/><polyline class="hit" data-si="${i}" points="${pts}"/>`;
+      if ((sh.t!=='p' && sh.t!=='g') || !Array.isArray(sh.pts) || !sh.pts.length) return '';
+      const pts = sh.pts.map(p=>`${+p[0]},${+p[1]}`).join(' '), c = safeColor(sh.c);
+      if (sh.n){
+        const xs = sh.pts.map(p=>+p[0]), ys = sh.pts.map(p=>+p[1]);
+        const m = sh.t==='g' ? [(Math.min(...xs)+Math.max(...xs))/2, (Math.min(...ys)+Math.max(...ys))/2] : sh.pts[Math.floor(sh.pts.length/2)];
+        labels += `<div class="shp-l" style="left:${+m[0]}%;top:${+m[1]}%">${esc(sh.n)}</div>`;
+      }
+      return sh.t==='g'
+        ? `<polygon points="${pts}" stroke="${c}" fill="${c}" fill-opacity=".18"/><polygon class="hit" data-si="${i}" points="${pts}"/>`
+        : `<polyline points="${pts}" stroke="${c}"/><polyline class="hit" data-si="${i}" points="${pts}"/>`;
     }).join('');
-    shapesEl.innerHTML = rects + `<svg class="mp-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>`;
+    shapesEl.innerHTML = rects + `<svg class="mp-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>` + labels;
   }
   function render(){
-    dlg.classList.toggle('erase', editing && tool==='erase');
+    dlg.classList.toggle('erase', editing && (tool==='erase' || tool==='pan'));
     const occ = occupancy(), total = doc.list.length;
     let used = 0; for (const p of doc.list) if (occ.has(key(p.l))) used++;
     titleEl.innerHTML = `${esc(curMap()?.name || 'Χάρτης παρκινγκ')}<small>${total ? `${total-used} ελεύθερες από ${total}` : 'δεν έχουν οριστεί θέσεις'}</small>`;
