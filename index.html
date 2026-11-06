@@ -28,14 +28,22 @@
   .tab{flex:1;padding:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:10px;font-weight:600;font-size:15px}
   .tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
   main{padding:12px 14px;max-width:760px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:6px;transition:padding .2s,box-shadow .2s,border-color .2s}
   .card[data-id]{cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.06)}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
-  .row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-  .plate{display:inline-block;font-weight:800;font-size:22px;letter-spacing:2px;padding:2px 10px;border:2px solid var(--text);border-radius:6px;background:#fff;color:#0f172a}
-  .loc{font-size:20px;font-weight:700;margin:10px 0 4px}
-  .meta{color:var(--muted);font-size:14px;display:flex;flex-wrap:wrap;gap:4px 14px}
+  .card.open{padding:14px 14px 12px;border-color:var(--accent);box-shadow:0 4px 14px rgba(0,0,0,.12)}
+  .row{display:flex;align-items:center;gap:10px}
+  .plate{display:inline-block;flex:none;font-weight:800;font-size:17px;letter-spacing:1.5px;padding:1px 8px;border:2px solid var(--text);border-radius:6px;background:#fff;color:#0f172a;transition:font-size .2s}
+  .card.open .plate{font-size:22px;letter-spacing:2px;padding:2px 10px}
+  .loc{flex:1;min-width:0;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:font-size .2s}
+  .card.open .loc{font-size:18px}
+  .chev{flex:none;color:var(--muted);font-size:13px;transition:transform .2s}
+  .card.open .chev{transform:rotate(180deg)}
+  .more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s ease}
+  .card.open .more{grid-template-rows:1fr}
+  .more>div{overflow:hidden;min-height:0}
+  .meta{color:var(--muted);font-size:14px;display:flex;flex-wrap:wrap;gap:4px 14px;padding-top:10px}
   .meta a{color:var(--accent);text-decoration:none;font-weight:600}
-  .tag{font-size:12px;font-weight:700;padding:3px 8px;border-radius:99px}
+  .tag{flex:none;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px}
   .tag.in{background:#dcfce7;color:#166534}
   .tag.out{background:#e2e8f0;color:#475569}
   .actions{display:flex;gap:8px;margin-top:12px}
@@ -257,7 +265,7 @@ if (LIVE) {
 /* ---------- Κατάσταση ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let all = [], tab = 'active', editing = null, mapApi = null, pickedMap = null;   // pickedMap: ο χάρτης απ' όπου επιλέχθηκε η θέση
+let openId = null, lastK = '', all = [], tab = 'active', editing = null, mapApi = null, pickedMap = null;   // pickedMap: ο χάρτης απ' όπου επιλέχθηκε η θέση
 
 const modeEl = $('#mode');
 modeEl.textContent = LIVE ? 'live' : 'demo';
@@ -279,9 +287,9 @@ function fmtDur(a,b){
 function carCard(v){
   const inside = !v.exitAt;
   const phone = v.phone ? `<a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>` : '';
-  return `<div class="card" data-id="${v.id}">
-    <div class="row"><span class="plate">${esc(v.plate)}</span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span></div>
-    <div class="loc">📍 ${esc(v.location)}</div>
+  return `<div class="card${v.id===openId?' open':''}" data-id="${v.id}">
+    <div class="row"><span class="plate">${esc(v.plate)}</span><span class="loc">📍 ${esc(v.location)}</span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
+    <div class="more"><div>
     <div class="meta">
       <span>⏱ ${fmtT(v.entryAt)}${inside?` · ${fmtDur(v.entryAt,Date.now())}`:` → ${fmtT(v.exitAt)} · ${fmtDur(v.entryAt,v.exitAt)}`}</span>
       ${v.keyNo?`<span>🔑 ${esc(v.keyNo)}</span>`:''}${phone}
@@ -290,12 +298,14 @@ function carCard(v){
     </div>
     ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}<button class="btn grow" data-act="edit">Επεξεργασία</button><button class="btn go grow" data-act="exit">Έφυγε ✓</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>`:
       `<div class="actions"><button class="btn grow" data-act="again">Ξανά στο παρκινγκ</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>`}
+    </div></div>
   </div>`;
 }
 
 function render(){
   const raw = $('#q').value;
   const k = plateKey(raw);
+  if (k !== lastK){ lastK = k; const one = k ? all.filter(v => !v.exitAt && (v.plateKey||plateKey(v.plate)).includes(k)) : []; openId = one.length===1 ? one[0].id : null; }   // ένα αποτέλεσμα → ανοίγει μόνο του
   const active = all.filter(v=>!v.exitAt);
   $('#count').textContent = `${active.length} μέσα`;
   let html = '';
@@ -708,12 +718,13 @@ $('#add').onclick = ()=>{ ensureStaff(); openForm(null, $('#q').value.trim()); }
 $('#list').addEventListener('click', async e=>{
   if (e.target.id==='addFromSearch'){ ensureStaff(); return openForm(null, $('#q').value.trim()); }
   const btn = e.target.closest('[data-act]');
-  if (!btn){                                   // πάτημα πάνω στην κάρτα (όχι σε κουμπί/σύνδεσμο) → δείξε το όχημα στον χάρτη
+  if (!btn){                                   // πάτημα πάνω στην κάρτα → ανοίγει/κλείνει (τα υπόλοιπα κλείνουν)
     if (e.target.closest('a')) return;
     const card = e.target.closest('.card[data-id]'); if (!card) return;
-    const c = all.find(x=>x.id===card.dataset.id); if (!c || c.exitAt) return;
-    if (mapApi?.hasSpot(c.location, c.mapId)) mapApi.open({ mode:'browse', focus:c.location, mapId:c.mapId });
-    else toast('Η θέση «'+c.location+'» δεν υπάρχει στον χάρτη');
+    const was = card.classList.contains('open');
+    document.querySelectorAll('.card.open').forEach(c => c.classList.remove('open'));
+    openId = was ? null : card.dataset.id;
+    if (!was){ card.classList.add('open'); setTimeout(()=>card.scrollIntoView({ block:'nearest', behavior:'smooth' }), 230); }
     return;
   }
   const v = all.find(x=>x.id===btn.closest('.card').dataset.id); if(!v) return;
