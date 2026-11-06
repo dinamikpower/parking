@@ -1,5 +1,5 @@
 // Απλό cache του κελύφους ώστε η εφαρμογή να ανοίγει γρήγορα και χωρίς σήμα.
-const C = 'parking-shell-v29';
+const C = 'parking-shell-v30';
 const SHELL = ['./', './index.html', './map.js?v=27', './alpr.js?v=1', './live.js?v=3', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css', './manifest.json', './icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C).map(k => caches.delete(k))))); self.clients.claim(); });
