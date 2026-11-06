@@ -277,6 +277,14 @@ function beautify(pts, W, H){
   return { t:'p', pts: back(snap(s.map(r=>[...r]), false)) };
 }
 
+/* Το Firestore δεν δέχεται πίνακες μέσα σε πίνακες, οπότε οι γραμμές/περιοχές (pts) αποθηκεύονται επίπεδα [x0,y0,x1,y1,…] */
+const encShapes = list => list.map(sh => Array.isArray(sh.pts) ? { ...sh, pts: sh.pts.flat() } : sh);
+const decShapes = list => (list||[]).map(sh => {
+  if (!Array.isArray(sh.pts) || !sh.pts.length || Array.isArray(sh.pts[0])) return sh;      // παλιά μορφή ή τίποτα
+  const q = []; for (let i=0;i+1<sh.pts.length;i+=2) q.push([sh.pts[i], sh.pts[i+1]]);
+  return { ...sh, pts: q };
+});
+
 export function zoneOf(label){ return String(label||'').replace(/\d+.*$/,'').replace(/[^A-Za-zΑ-Ωα-ω]/g,'').toUpperCase() || '—'; }
 export function nextLabel(l){
   const m = /^(.*?)(\d+)$/.exec(String(l||''));
@@ -330,7 +338,7 @@ export function initMap(ctx){
     mapImg = null; remote = { list:[], size:3.2, lsize:2.4, shapes:[] }; doc = cloneRemote(); zoneFilter = null; selected = null;
     if (id) unsubMap = store.subscribeMap(id, ({ img:i, spots, shapes }) => {
       mapImg = i && i.image ? i : null;
-      remote = { list: (spots?.list)||[], size: spots?.size||3.2, lsize: spots?.lsize||2.4, shapes: (shapes?.list)||[] };
+      remote = { list: (spots?.list)||[], size: spots?.size||3.2, lsize: spots?.lsize||2.4, shapes: decShapes(shapes?.list) };
       if (!editing && Date.now() > holdRemoteUntil) doc = cloneRemote();
       loaded = true;
       if (dlg.open){ render(); if (afterLoad){ const f = afterLoad; afterLoad = null; requestAnimationFrame(f); } }
@@ -350,7 +358,7 @@ export function initMap(ctx){
   });
   // Παίρνει πρώτα φωτογραφία της κατάστασης και μετά στέλνει: αλλιώς μια απάντηση της βάσης ανάμεσα στις δύο αποθηκεύσεις μπορούσε να αντικαταστήσει τα σχέδια
   const saveAll = () => { if (!curId) return Promise.resolve(); const id = curId, list = doc.list, size = doc.size, lsize = doc.lsize, shapes = doc.shapes;
-    return Promise.all([ store.saveSpots(id, { list, size, lsize }), store.saveShapes(id, { list:shapes }) ]); };
+    return Promise.all([ store.saveSpots(id, { list, size, lsize }), store.saveShapes(id, { list:encShapes(shapes) }) ]); };
   function scheduleSave(){
     clearTimeout(saveT);
     saveT = setTimeout(()=>saveAll().catch(e=>toast('Σφάλμα αποθήκευσης: '+e.message)), 500);
@@ -585,7 +593,7 @@ export function initMap(ctx){
           }
         }
         clearTimeout(saveT); doc.list = list; doc.shapes = shapes; undo = [];
-        await Promise.all([ store.saveImage(curId, o), store.saveSpots(curId, { list, size:doc.size, lsize:doc.lsize }), store.saveShapes(curId, { list:shapes }) ]);
+        await Promise.all([ store.saveImage(curId, o), store.saveSpots(curId, { list, size:doc.size, lsize:doc.lsize }), store.saveShapes(curId, { list:encShapes(shapes) }) ]);
         closeSheet(); toast('Η εικόνα περικόπηκε'); setTimeout(()=>{ renderAll(); fitAll(); }, 150);
       } catch(err){ toast('Σφάλμα περικοπής: '+err.message); }
       return;
