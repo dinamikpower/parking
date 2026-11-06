@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json">
+<title>Παρκινγκ</title>
+<style>
+  :root{
+    --bg:#f1f5f9; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --accent:#2563eb; --accent-d:#1d4ed8; --ok:#16a34a; --warn:#d97706; --danger:#dc2626;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b1220; --card:#131c2e; --text:#e6edf7; --muted:#8fa0b8; --line:#243049; --accent:#3b82f6; --accent-d:#2563eb; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:90px}
+  header{position:sticky;top:0;z-index:10;background:#0f172a;color:#fff;padding:12px 14px calc(12px);box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+  h1{font-size:18px;margin:0}
+  .badge{font-size:12px;padding:3px 8px;border-radius:99px;background:#334155}
+  .badge.live{background:#166534}
+  .badge.demo{background:#92400e}
+  #q{width:100%;font-size:22px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:12px 14px;border-radius:12px;border:2px solid transparent;outline:none;background:#fff;color:#0f172a}
+  #q:focus{border-color:var(--accent)}
+  .tabs{display:flex;gap:6px;margin:12px 14px 0}
+  .tab{flex:1;padding:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:10px;font-weight:600;font-size:15px}
+  .tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  main{padding:12px 14px;max-width:760px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+  .row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .plate{display:inline-block;font-weight:800;font-size:22px;letter-spacing:2px;padding:2px 10px;border:2px solid var(--text);border-radius:6px;background:#fff;color:#0f172a}
+  .loc{font-size:20px;font-weight:700;margin:10px 0 4px}
+  .meta{color:var(--muted);font-size:14px;display:flex;flex-wrap:wrap;gap:4px 14px}
+  .meta a{color:var(--accent);text-decoration:none;font-weight:600}
+  .tag{font-size:12px;font-weight:700;padding:3px 8px;border-radius:99px}
+  .tag.in{background:#dcfce7;color:#166534}
+  .tag.out{background:#e2e8f0;color:#475569}
+  .actions{display:flex;gap:8px;margin-top:12px}
+  button{font:inherit;cursor:pointer}
+  .btn{padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);font-weight:600}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.go{background:var(--ok);border-color:var(--ok);color:#fff}
+  .btn.danger{color:var(--danger)}
+  .grow{flex:1}
+  .empty{text-align:center;color:var(--muted);padding:40px 10px}
+  h3{margin:18px 2px 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:20;background:var(--accent);color:#fff;border:0;border-radius:99px;padding:16px 22px;font-size:17px;font-weight:700;box-shadow:0 6px 18px rgba(37,99,235,.45)}
+  dialog{border:0;border-radius:16px;padding:0;width:min(520px,94vw);background:var(--card);color:var(--text)}
+  dialog::backdrop{background:rgba(0,0,0,.55)}
+  form{padding:18px}
+  form h2{margin:0 0 12px;font-size:19px}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px;font-weight:600}
+  input,textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit;font-size:17px}
+  input.pl{font-size:22px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{padding:8px 12px;border-radius:99px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:14px;font-weight:600}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .warn{background:#fef3c7;color:#92400e;border-radius:10px;padding:10px;font-size:14px;margin-top:10px}
+  .srch{display:flex;gap:8px}
+  .srch input{flex:1;min-width:0}
+  .cam{flex:none;width:54px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-size:24px}
+  .plrow{display:flex;gap:8px}
+  .plrow input{flex:1;min-width:0}
+  .plrow .cam{width:52px;border-radius:10px}
+  .vid{position:relative;background:#000;border-radius:12px;overflow:hidden;margin-bottom:10px}
+  .vid video{display:block;width:100%}
+  .guide{position:absolute;left:5%;width:90%;top:30%;height:40%;border:3px solid #22c55e;border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.45)}
+  .scanout{min-height:48px;font-size:15px;color:var(--muted);margin-bottom:10px}
+  .scanout b{color:var(--text);font-size:22px;letter-spacing:2px}
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 16px;border-radius:10px;z-index:50;font-size:15px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="top">
+    <h1>🅿️ Παρκινγκ</h1>
+    <span style="display:flex;gap:6px;align-items:center">
+      <span id="count" class="badge">0 μέσα</span>
+      <span id="mode" class="badge demo" title="">demo</span>
+    </span>
+  </div>
+  <div class="srch">
+    <input id="q" type="search" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="Πινακίδα…">
+    <button class="cam" id="camQ" type="button" aria-label="Σάρωση πινακίδας">📷</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab on" data-tab="active">Μέσα τώρα</button>
+  <button class="tab" data-tab="history">Ιστορικό</button>
+  <button class="tab" data-tab="map">🗺 Χάρτης</button>
+</div>
+
+<main id="list"></main>
+
+<button class="fab" id="add">+ Νέο όχημα</button>
+
+<dialog id="dlg">
+  <form method="dialog" id="form">
+    <h2 id="dlgTitle">Νέο όχημα</h2>
+    <label>Πινακίδα</label>
+    <div class="plrow">
+      <input class="pl" id="fPlate" required autocomplete="off" autocapitalize="characters" placeholder="ΥΚΑ1234">
+      <button class="cam" id="camF" type="button" aria-label="Σάρωση πινακίδας">📷</button>
+    </div>
+    <div id="fWarn"></div>
+    <label>Θέση</label>
+    <div class="plrow">
+      <input id="fLoc" required placeholder="π.χ. Α12 ή Όροφος 2 - Β14">
+      <button class="cam" id="mapF" type="button" aria-label="Επιλογή από χάρτη" style="background:var(--ok)">🗺</button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="two">
+      <div><label>Αρ. κλειδιού</label><input id="fKey" inputmode="numeric" placeholder="προαιρετικό"></div>
+      <div><label>Τηλέφωνο πελάτη</label><input id="fPhone" inputmode="tel" placeholder="προαιρετικό"></div>
+    </div>
+    <label>Σημείωση</label>
+    <input id="fNote" placeholder="προαιρετικό">
+    <div class="actions">
+      <button type="button" class="btn grow" id="fCancel">Άκυρο</button>
+      <button type="submit" class="btn primary grow" id="fSave" value="save">Αποθήκευση</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="scan">
+  <div style="padding:16px">
+    <h2 style="margin:0 0 10px;font-size:19px">Σάρωση πινακίδας</h2>
+    <div class="vid"><video id="vid" playsinline muted></video><div class="guide"></div></div>
+    <canvas id="scanPrev" style="display:block;width:60%;margin:0 auto 8px;border-radius:6px;background:#222"></canvas>
+    <div id="scanOut" class="scanout"></div>
+    <div class="actions">
+      <button type="button" class="btn grow" id="scanClose">Κλείσιμο</button>
+      <label class="btn grow" style="text-align:center">📁 Φωτογραφία
+        <input type="file" accept="image/*" capture="environment" id="scanFile" hidden>
+      </label>
+    </div>
+  </div>
+</dialog>
+
+<script type="module">
+/* ============================================================
+   Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
+   Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
+   ============================================================ */
+import { initMap } from './map.js';
+let CFG = null;
+try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
+const LIVE = !!(CFG && CFG.apiKey && !String(CFG.apiKey).startsWith('YOUR'));
+
+/* ---------- Κανονικοποίηση πινακίδας ----------
+   Ελληνικές πινακίδες: τα ελληνικά γράμματα που μοιάζουν με λατινικά
+   μετατρέπονται σε λατινικά, ώστε «ΥΚΑ-1234», «yka 1234» και «ΥΚΑ1234» να είναι ίδια. */
+const GR2LAT = {Α:'A',Β:'B',Ε:'E',Ζ:'Z',Η:'H',Ι:'I',Κ:'K',Μ:'M',Ν:'N',Ο:'O',Ρ:'P',Τ:'T',Υ:'Y',Χ:'X'};
+export function plateKey(s){
+  return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase()
+    .replace(/[^A-ZΑ-Ω0-9]/g,'').split('').map(c=>GR2LAT[c]||c).join('');
+}
+window.__plateKey = plateKey;
+
+/* ---------- Επίπεδο δεδομένων (Firebase ή τοπικό) ---------- */
+let store;
+if (LIVE) {
+  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
+  const fs = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
+  const app = initializeApp(CFG);
+  const db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) });
+  const col = fs.collection(db, 'vehicles');
+  store = {
+    subscribe(cb){
+      const q = fs.query(col, fs.orderBy('entryAt','desc'), fs.limit(1500));
+      return fs.onSnapshot(q, snap => cb(snap.docs.map(d => ({ id:d.id, ...d.data(), entryAt:d.data().entryAt?.toMillis?.() ?? Date.now(), exitAt:d.data().exitAt?.toMillis?.() ?? null }))));
+    },
+    async add(v){ await fs.addDoc(col, { ...v, entryAt: fs.serverTimestamp(), exitAt:null }); },
+    async update(id,p){ await fs.updateDoc(fs.doc(db,'vehicles',id), p); },
+    async exit(id){ await fs.updateDoc(fs.doc(db,'vehicles',id), { exitAt: fs.serverTimestamp() }); },
+    // Χάρτης: η εικόνα και οι θέσεις σε ξεχωριστά έγγραφα (το όριο του Firestore είναι ~1MB ανά έγγραφο)
+    subscribeMap(cb){
+      let img = null, spots = null, shapes = null; const emit = () => cb({ img, spots, shapes });
+      const u1 = fs.onSnapshot(fs.doc(db,'maps','main'),   s => { img    = s.exists() ? s.data() : null; emit(); });
+      const u2 = fs.onSnapshot(fs.doc(db,'maps','spots'),  s => { spots  = s.exists() ? s.data() : null; emit(); });
+      const u3 = fs.onSnapshot(fs.doc(db,'maps','shapes'), s => { shapes = s.exists() ? s.data() : null; emit(); });
+      return () => { u1(); u2(); u3(); };
+    },
+    async saveImage(o){ await fs.setDoc(fs.doc(db,'maps','main'),   { ...o, updatedAt: Date.now() }); },
+    async saveSpots(o){ await fs.setDoc(fs.doc(db,'maps','spots'),  { ...o, updatedAt: Date.now() }); },
+    async saveShapes(o){ await fs.setDoc(fs.doc(db,'maps','shapes'), { ...o, updatedAt: Date.now() }); },
+  };
+} else {
+  const K='parking-demo-v1'; const subs=new Set(); const mapSubs=new Set();
+  const load=()=>{ try{return JSON.parse(localStorage.getItem(K))||[]}catch{return[]} };
+  const save=a=>{ localStorage.setItem(K,JSON.stringify(a)); subs.forEach(f=>f(sorted())); };
+  const sorted=()=>load().sort((a,b)=>b.entryAt-a.entryAt);
+  store = {
+    subscribe(cb){ subs.add(cb); cb(sorted()); window.addEventListener('storage',()=>cb(sorted())); return ()=>subs.delete(cb); },
+    async add(v){ const a=load(); a.push({ ...v, id:crypto.randomUUID(), entryAt:Date.now(), exitAt:null }); save(a); },
+    async update(id,p){ save(load().map(x=>x.id===id?{...x,...p}:x)); },
+    async exit(id){ save(load().map(x=>x.id===id?{...x,exitAt:Date.now()}:x)); },
+    subscribeMap(cb){
+      const emit=()=>{ let img=null,spots=null,shapes=null;
+        try{img=JSON.parse(localStorage.getItem('parking-map-img'))}catch{}
+        try{spots=JSON.parse(localStorage.getItem('parking-map-spots'))}catch{}
+        try{shapes=JSON.parse(localStorage.getItem('parking-map-shapes'))}catch{}
+        cb({img,spots,shapes}); };
+      mapSubs.add(emit); emit(); return ()=>mapSubs.delete(emit);
+    },
+    async saveImage(o){ localStorage.setItem('parking-map-img',JSON.stringify(o)); mapSubs.forEach(f=>f()); },
+    async saveSpots(o){ localStorage.setItem('parking-map-spots',JSON.stringify(o)); mapSubs.forEach(f=>f()); },
+    async saveShapes(o){ localStorage.setItem('parking-map-shapes',JSON.stringify(o)); mapSubs.forEach(f=>f()); },
+  };
+}
+
+/* ---------- Κατάσταση ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let all = [], tab = 'active', editing = null, mapApi = null;
+
+const modeEl = $('#mode');
+modeEl.textContent = LIVE ? 'live' : 'demo';
+modeEl.className = 'badge ' + (LIVE ? 'live' : 'demo');
+modeEl.title = LIVE ? 'Συγχρονισμός σε πραγματικό χρόνο' : 'Τοπική λειτουργία – τα δεδομένα δεν μοιράζονται';
+
+const staff = () => localStorage.getItem('parking-staff') || '';
+function ensureStaff(){
+  if (!staff()) { const n = prompt('Το όνομά σου (για το ιστορικό):'); if (n) localStorage.setItem('parking-staff', n.trim()); }
+}
+
+const fmtT = ms => new Date(ms).toLocaleString('el-GR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+function fmtDur(a,b){
+  const m = Math.max(0, Math.round((b-a)/60000)); const h = Math.floor(m/60);
+  return h>=24 ? `${Math.floor(h/24)}μ ${h%24}ω` : h>0 ? `${h}ω ${m%60}λ` : `${m}λ`;
+}
+
+/* ---------- Απόδοση ---------- */
+function carCard(v){
+  const inside = !v.exitAt;
+  const phone = v.phone ? `<a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>` : '';
+  return `<div class="card" data-id="${v.id}">
+    <div class="row"><span class="plate">${esc(v.plate)}</span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span></div>
+    <div class="loc">📍 ${esc(v.location)}</div>
+    <div class="meta">
+      <span>⏱ ${fmtT(v.entryAt)}${inside?` · ${fmtDur(v.entryAt,Date.now())}`:` → ${fmtT(v.exitAt)} · ${fmtDur(v.entryAt,v.exitAt)}`}</span>
+      ${v.keyNo?`<span>🔑 ${esc(v.keyNo)}</span>`:''}${phone}
+      ${v.note?`<span>📝 ${esc(v.note)}</span>`:''}
+      ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}
+    </div>
+    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}<button class="btn grow" data-act="edit">Επεξεργασία</button><button class="btn go grow" data-act="exit">Έφυγε ✓</button></div>`:
+      `<div class="actions"><button class="btn grow" data-act="again">Ξανά στο παρκινγκ</button></div>`}
+  </div>`;
+}
+
+function render(){
+  const raw = $('#q').value;
+  const k = plateKey(raw);
+  const active = all.filter(v=>!v.exitAt);
+  $('#count').textContent = `${active.length} μέσα`;
+  let html = '';
+
+  if (k) {
+    const m = all.filter(v => (v.plateKey||plateKey(v.plate)).includes(k));
+    const mIn = m.filter(v=>!v.exitAt), mOut = m.filter(v=>v.exitAt);
+    if (!m.length) html = `<div class="empty">Καμία εγγραφή για «${esc(raw.toUpperCase())}».<br><br><button class="btn primary" id="addFromSearch">+ Καταχώρηση αυτής της πινακίδας</button></div>`;
+    else {
+      if (mIn.length) html += `<h3>Στο παρκινγκ τώρα</h3>` + mIn.map(carCard).join('');
+      else html += `<div class="card"><b>Δεν είναι μέσα αυτή τη στιγμή.</b></div>`;
+      if (mOut.length) html += `<h3>Προηγούμενες φορές</h3>` + mOut.slice(0,30).map(carCard).join('');
+    }
+  } else if (tab === 'active') {
+    html = active.length ? active.map(carCard).join('') : `<div class="empty">Δεν υπάρχουν οχήματα μέσα.<br>Πάτα «+ Νέο όχημα».</div>`;
+  } else {
+    const hist = all.filter(v=>v.exitAt);
+    html = hist.length ? hist.slice(0,200).map(carCard).join('') : `<div class="empty">Δεν υπάρχει ιστορικό ακόμα.</div>`;
+  }
+  $('#list').innerHTML = html;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.tab===tab && !k));
+}
+
+/* ---------- Φόρμα ---------- */
+const dlg = $('#dlg');
+function openForm(v, prefillPlate){
+  editing = v || null;
+  $('#dlgTitle').textContent = v?.id && !v.__again ? 'Επεξεργασία' : 'Νέο όχημα';
+  $('#fPlate').value = v?.plate || prefillPlate || '';
+  $('#fLoc').value = v?.__again ? '' : (v?.location || '');
+  $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = v?.phone || ''; $('#fNote').value = v?.note || '';
+  if (v?.__again) editing = null;
+  checkDup(); renderChips(); dlg.showModal();
+  setTimeout(()=>($('#fPlate').value ? $('#fLoc') : $('#fPlate')).focus(), 50);
+}
+function checkDup(){
+  const k = plateKey($('#fPlate').value);
+  const dup = k && all.find(v=>!v.exitAt && (v.plateKey||plateKey(v.plate))===k && v.id!==editing?.id);
+  $('#fWarn').innerHTML = dup ? `<div class="warn">⚠️ Αυτή η πινακίδα είναι ήδη μέσα στο «${esc(dup.location)}». Αν την ξαναβάλεις, θα υπάρχουν δύο ενεργές εγγραφές.</div>` : '';
+}
+function renderChips(){
+  // Γρήγορες επιλογές από τις πιο πρόσφατες θέσεις που έχουν χρησιμοποιηθεί
+  const seen = [...new Set(all.map(v=>v.location).filter(Boolean))].slice(0,8);
+  $('#chips').innerHTML = seen.map(s=>`<button type="button" class="chip">${esc(s)}</button>`).join('');
+}
+$('#chips').addEventListener('click',e=>{ if(e.target.classList.contains('chip')) $('#fLoc').value = e.target.textContent; });
+$('#fPlate').addEventListener('input',checkDup);
+$('#fCancel').onclick = ()=>dlg.close();
+
+$('#form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const plate = $('#fPlate').value.trim().toUpperCase();
+  const data = { plate, plateKey: plateKey(plate), location: $('#fLoc').value.trim(),
+    keyNo: $('#fKey').value.trim(), phone: $('#fPhone').value.trim(), note: $('#fNote').value.trim() };
+  if (!data.plateKey || !data.location) return;
+  try {
+    if (editing?.id) await store.update(editing.id, data);
+    else await store.add({ ...data, by: staff() });
+    dlg.close(); toast(editing?.id ? 'Ενημερώθηκε' : 'Καταχωρήθηκε ✓');
+    if (!editing?.id) $('#q').value = '';
+  } catch(err){ toast('Σφάλμα: '+err.message); }
+});
+
+/* ---------- Σάρωση πινακίδας με κάμερα (OCR στον browser) ----------
+   Tesseract.js φορτώνεται μόνο όταν χρειαστεί. Διαβάζει συνεχώς το πλαίσιο της
+   κάμερας και δέχεται το αποτέλεσμα όταν βγει ίδιο 2 φορές στη σειρά. */
+const LETTERS = 'ABEZHIKMNOPTXY';                       // τα 14 γράμματα των ελληνικών πινακίδων
+const TO_LET = { '0':'O', '1':'I', '8':'B', '2':'Z', '7':'T' };
+const TO_DIG = { O:'0', I:'1', B:'8', Z:'2', T:'7' };
+export function parsePlate(text){
+  const s = String(text||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  let best = null;
+  for (let i=0; i+7<=s.length; i++){
+    let out = '', fixes = 0, ok = true;
+    for (let j=0; j<7 && ok; j++){
+      let c = s[i+j];
+      if (j<3){ if(!LETTERS.includes(c)){ if(TO_LET[c]){c=TO_LET[c];fixes++} else ok=false } }
+      else    { if(!/\d/.test(c)){ if(TO_DIG[c]){c=TO_DIG[c];fixes++} else ok=false } }
+      out += c;
+    }
+    if (ok && (!best || fixes < best.fixes)) best = { plate: out.slice(0,3)+out.slice(3), fixes };
+  }
+  return best ? best.plate : null;
+}
+window.__parsePlate = parsePlate;
+
+// Ξένες πινακίδες: άγνωστη μορφή, οπότε δεχόμαστε 4-9 χαρακτήρες με τουλάχιστον ένα ψηφίο και ένα γράμμα.
+// Η ασφάλεια έρχεται από την επιβεβαίωση (ίδιο αποτέλεσμα 2 φορές) και από τον έλεγχο του χρήστη.
+export function parseForeign(text){
+  const t = String(text||'').toUpperCase();
+  const cands = [t, ...t.split(/\r?\n/)];
+  for (const c of cands){
+    const s = c.replace(/[^A-Z0-9]/g,'');
+    if (s.length>=4 && s.length<=9 && /\d/.test(s) && /[A-Z]/.test(s)) return s;
+  }
+  return null;
+}
+window.__parseForeign = parseForeign;
+const ALNUM = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+// Αυτόματη επιλογή: αν το κείμενο μοιάζει με ελληνική πινακίδα (3 γράμματα + 4 ψηφία, μέχρι 8 χαρακτήρες
+// συνολικά ώστε να μη «κόβεται» κομμάτι από μεγαλύτερη ξένη πινακίδα) διορθώνεται ως ελληνική, αλλιώς ως ξένη.
+export function parseAuto(text){
+  const s = String(text||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const gr = s.length <= 8 ? parsePlate(text) : null;
+  return gr || parseForeign(text);
+}
+window.__parseAuto = parseAuto;
+
+const scanDlg = $('#scan'), vid = $('#vid'), out = $('#scanOut');
+let worker = null, scanning = false, stream = null, onScan = null;
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+async function getWorker(){
+  if (worker) return worker;
+  if (!window.Tesseract) await new Promise((res,rej)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = res; s.onerror = ()=>rej(new Error('Χρειάζεται internet για την πρώτη φόρτωση της σάρωσης.'));
+    document.head.append(s);
+  });
+  const w = await Tesseract.createWorker('eng');
+  await w.setParameters({ tessedit_char_whitelist: ALNUM, tessedit_pageseg_mode: '7' });
+  return (worker = w);
+}
+
+/* ---- Προετοιμασία εικόνας: απομόνωση μόνο των χαρακτήρων της πινακίδας ----
+   Το OCR μπερδευόταν από τη μπλε λωρίδα (GR/D/I), το περίγραμμα και το φόντο και πρόσθετε
+   σκουπίδια μπροστά/πίσω. Εδώ βρίσκουμε τα «σχήματα» (connected components), κρατάμε όσα έχουν
+   ύψος γράμματος και βρίσκονται στην ίδια γραμμή, και στέλνουμε στο OCR μόνο αυτά. */
+function grayCanvas(g, W, H){
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'), im = x.createImageData(W, H);
+  for (let i=0;i<W*H;i++){ const v=g[i]; im.data[4*i]=v; im.data[4*i+1]=v; im.data[4*i+2]=v; im.data[4*i+3]=255; }
+  x.putImageData(im, 0, 0); return c;
+}
+function otsu(g){
+  const h = new Float64Array(256); for (let i=0;i<g.length;i++) h[g[i]]++;
+  const n = g.length; let sum = 0; for (let i=0;i<256;i++) sum += i*h[i];
+  let sB=0, wB=0, best=0, t=128;
+  for (let i=0;i<256;i++){
+    wB += h[i]; if (!wB) continue; const wF = n-wB; if (!wF) break;
+    sB += i*h[i]; const mB=sB/wB, mF=(sum-sB)/wF, v=wB*wF*(mB-mF)*(mB-mF);
+    if (v>best){ best=v; t=i; }
+  }
+  return t;
+}
+function erode3(m, W, H){
+  const o = new Uint8Array(W*H);
+  for (let y=1;y<H-1;y++) for (let x=1;x<W-1;x++){
+    const i=y*W+x;
+    if (m[i]&&m[i-1]&&m[i+1]&&m[i-W]&&m[i+W]&&m[i-W-1]&&m[i-W+1]&&m[i+W-1]&&m[i+W+1]) o[i]=1;
+  }
+  return o;
+}
+function components(m, W, H){                     // σύνδεση 8 γειτόνων
+  const lab = new Int32Array(W*H), stack = new Int32Array(W*H), out = []; let id = 0;
+  for (let s=0;s<W*H;s++){
+    if (!m[s] || lab[s]) continue;
+    id++; let sp=0; stack[sp++]=s; lab[s]=id;
+    let x0=W, y0=H, x1=0, y1=0, a=0;
+    while (sp){
+      const p=stack[--sp], px=p%W, py=(p/W)|0; a++;
+      if (px<x0)x0=px; if (px>x1)x1=px; if (py<y0)y0=py; if (py>y1)y1=py;
+      for (let dy=-1;dy<=1;dy++){ const ny=py+dy; if (ny<0||ny>=H) continue;
+        for (let dx=-1;dx<=1;dx++){ const nx=px+dx; if (nx<0||nx>=W) continue;
+          const q=ny*W+nx; if (m[q] && !lab[q]){ lab[q]=id; stack[sp++]=q; } } }
+    }
+    out.push({ x:x0, y:y0, w:x1-x0+1, h:y1-y0+1, a });
+  }
+  return out;
+}
+const medianOf = a => { const s=[...a].sort((p,q)=>p-q); return s[s.length>>1]; };
+function isolate(g, W, H, light, er){
+  const t = otsu(g); let m = new Uint8Array(W*H);
+  for (let i=0;i<m.length;i++) m[i] = light ? (g[i]>t ? 1 : 0) : (g[i]<t ? 1 : 0);
+  if (er) m = erode3(m, W, H);
+  const cands = components(m, W, H).filter(c =>
+    c.a>=20 && !(c.x<=1 || c.y<=1 || c.x+c.w>=W-1 || c.y+c.h>=H-1) &&
+    c.h>=0.18*H && c.h<=0.95*H && c.w<=1.7*c.h && c.w>=0.06*c.h);
+  if (cands.length<3) return null;
+  let best = [];
+  for (const c of cands){ const grp = cands.filter(d=>Math.abs(d.h-c.h)<=0.2*c.h); if (grp.length>best.length) best=grp; }
+  if (best.length<3) return null;
+  const hr = medianOf(best.map(d=>d.h)), cy = medianOf(best.map(d=>d.y+d.h/2));
+  const keep = cands.filter(d => Math.abs(d.y+d.h/2-cy)<=0.35*hr && d.h>=0.55*hr && d.h<=1.35*hr);
+  if (keep.length<3) return null;
+  const e = er+1;
+  const x0=Math.max(0,Math.min(...keep.map(d=>d.x))-e), x1=Math.min(W,Math.max(...keep.map(d=>d.x+d.w))+e);
+  const y0=Math.max(0,Math.min(...keep.map(d=>d.y))-e), y1=Math.min(H,Math.max(...keep.map(d=>d.y+d.h))+e);
+  const pad=Math.floor(0.35*hr), cw=x1-x0, ch=y1-y0, OW=cw+2*pad, OH=ch+2*pad;
+  const o = new Uint8Array(OW*OH).fill(255);
+  for (let y=0;y<ch;y++) for (let x=0;x<cw;x++){ const v=g[(y0+y)*W+x0+x]; o[(y+pad)*OW+x+pad] = light ? 255-v : v; }
+  const s = 80/hr, c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(OW*s)); c.height = Math.max(1, Math.round(OH*s));
+  const cx = c.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(grayCanvas(o,OW,OH), 0, 0, c.width, c.height);
+  return { canvas:c, n:keep.length, box:[x0,y0,x1,y1] };
+}
+function prep(src, sx, sy, sw, sh, isolateChars = true){
+  const W = 900, H = Math.round(W * sh / sw);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d', { willReadFrequently:true });
+  x.drawImage(src, sx, sy, sw, sh, 0, 0, W, H);
+  const d = x.getImageData(0,0,W,H).data, g = new Uint8Array(W*H), hist = new Uint32Array(256);
+  for (let i=0;i<W*H;i++){ const v=(d[4*i]*.3+d[4*i+1]*.59+d[4*i+2]*.11)|0; g[i]=v; hist[v]++; }
+  const pct = p => { let acc=0; const tg=W*H*p; for (let i=0;i<256;i++){ acc+=hist[i]; if (acc>=tg) return i; } return 255; };
+  const lo = pct(.01), hi = pct(.99), k = 255/Math.max(1,hi-lo);
+  for (let i=0;i<g.length;i++) g[i] = Math.max(0, Math.min(255, (g[i]-lo)*k));   // τάνυση αντίθεσης, ΧΩΡΙΣ αντιστροφή
+  if (isolateChars){
+    for (const light of [false, true]){                // πρώτα σκούρο κείμενο σε ανοιχτό φόντο, μετά αντίστροφα
+      let best = null;
+      for (const er of [0,1]){ const r = isolate(g, W, H, light, er); if (r && (!best || r.n>best.n)) best = r; }
+      if (best) return best.canvas;
+    }
+  }
+  return grayCanvas(g, W, H);
+}
+window.__iso = { otsu, components, isolate, erode3 };
+
+function stopScan(){
+  scanning = false;
+  stream?.getTracks().forEach(t=>t.stop()); stream = null; vid.srcObject = null;
+}
+function accept(plate){
+  stopScan(); if (scanDlg.open) scanDlg.close();
+  navigator.vibrate?.(60);
+  onScan?.(plate);
+}
+
+async function openScan(cb){
+  onScan = cb; out.textContent = 'Άνοιγμα κάμερας…'; scanDlg.showModal();
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} }, audio:false });
+    vid.srcObject = stream; await vid.play();
+  } catch(e){
+    out.textContent = 'Δεν δόθηκε πρόσβαση στην κάμερα. Πάτα «Φωτογραφία» για να τραβήξεις κοντινή φωτογραφία της πινακίδας.';
+    return;
+  }
+  out.textContent = 'Φόρτωση αναγνώρισης (μόνο την πρώτη φορά)…';
+  let w; try { w = await getWorker(); } catch(e){ out.textContent = e.message; return; }
+  scanning = true; const seen = {}; let n = 0;
+  out.textContent = 'Στόχευσε την πινακίδα μέσα στο πράσινο πλαίσιο.';
+  while (scanning){
+    const vw = vid.videoWidth, vh = vid.videoHeight;
+    if (!vw){ await sleep(200); continue; }
+    try {
+      const c = prep(vid, vw*.05, vh*.30, vw*.9, vh*.40);
+      const pv = $('#scanPrev'); pv.width = Math.round(c.width/3); pv.height = Math.round(c.height/3);
+      pv.getContext('2d').drawImage(c, 0, 0, pv.width, pv.height);   // τι «βλέπει» η αναγνώριση
+      const { data } = await w.recognize(c);
+      if (!scanning) break;
+      n++;
+      const raw = (data.text||'').trim().replace(/\s+/g,' ');
+      const p = parseAuto(data.text);
+      if (p){ seen[p] = (seen[p]||0) + 1; if (seen[p] >= 2) return accept(p); }
+      out.innerHTML = (p ? `Διαβάζω: <b>${p}</b> …` : 'Στόχευσε την πινακίδα μέσα στο πράσινο πλαίσιο.')
+        + `<div style="font-size:12px;margin-top:4px">Ανάγνωση #${n}: «${esc(raw)||'—'}»</div>`;
+    } catch(err){
+      out.textContent = 'Σφάλμα αναγνώρισης: ' + (err && err.message || err);
+      stopScan(); return;
+    }
+    await sleep(120);
+  }
+}
+
+$('#scanFile').addEventListener('change', async e=>{        // εναλλακτικά: φωτογραφία
+  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  out.textContent = 'Διαβάζω τη φωτογραφία…';
+  try {
+    const w = await getWorker(); const bmp = await createImageBitmap(f);
+    const sc = Math.min(1, 1800/Math.max(bmp.width,bmp.height));
+    const c = prep(bmp, 0, 0, bmp.width, bmp.height, false); // κρατάει όλο το κάδρο
+    await w.setParameters({ tessedit_pageseg_mode: '11' });
+    const { data } = await w.recognize(c);
+    await w.setParameters({ tessedit_pageseg_mode: '7' });
+    const p = parseAuto(data.text);
+    if (p) accept(p); else out.textContent = 'Δεν διάβασα πινακίδα. Δοκίμασε πιο κοντινή, ευθεία φωτογραφία.';
+  } catch(err){ out.textContent = err.message; }
+});
+scanDlg.addEventListener('close', stopScan);
+$('#scanClose').onclick = ()=>scanDlg.close();
+
+$('#camQ').onclick = ()=>openScan(p=>{ $('#q').value = p; render(); });
+$('#camF').onclick = ()=>openScan(p=>{ $('#fPlate').value = p; checkDup(); $('#fLoc').focus(); });
+
+/* ---------- Γεγονότα ---------- */
+$('#add').onclick = ()=>{ ensureStaff(); openForm(null, $('#q').value.trim()); };
+$('#list').addEventListener('click', async e=>{
+  if (e.target.id==='addFromSearch'){ ensureStaff(); return openForm(null, $('#q').value.trim()); }
+  const btn = e.target.closest('[data-act]'); if(!btn) return;
+  const v = all.find(x=>x.id===btn.closest('.card').dataset.id); if(!v) return;
+  if (btn.dataset.act==='map') mapApi.open({ mode:'browse', focus: v.location });
+  if (btn.dataset.act==='edit') openForm(v);
+  if (btn.dataset.act==='again'){ ensureStaff(); openForm({...v, __again:true}); }
+  if (btn.dataset.act==='exit' && confirm(`Έφυγε το ${v.plate};`)) { await store.exit(v.id); toast('Καταγράφηκε έξοδος'); }
+});
+$('#q').addEventListener('input',render);
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  if (t.dataset.tab==='map') return mapApi.open({ mode:'browse' });
+  tab=t.dataset.tab; $('#q').value=''; render();
+});
+$('#mapF').onclick = ()=>mapApi.open({ mode:'pick', onPick: label=>{ $('#fLoc').value = label; } });
+
+let tt; function toast(m){ document.querySelector('.toast')?.remove(); const d=document.createElement('div'); d.className='toast'; d.textContent=m; document.body.append(d); clearTimeout(tt); tt=setTimeout(()=>d.remove(),2200); }
+
+mapApi = initMap({
+  store, plateKey, esc, fmtT, fmtDur, toast,
+  getCars: () => all,
+  onChange: () => render(),                       // όταν αλλάζουν οι θέσεις, ενημέρωσε τα κουμπιά «Στον χάρτη»
+  openNewCarAt: label => { ensureStaff(); openForm(null, ''); $('#fLoc').value = label; $('#fPlate').focus(); },
+  exitCar: async id => { const v = all.find(x=>x.id===id); if (v && confirm(`Έφυγε το ${v.plate};`)){ await store.exit(id); toast('Καταγράφηκε έξοδος'); } },
+});
+store.subscribe(rows => { all = rows.map(r=>({...r, plateKey: r.plateKey || plateKey(r.plate)})); render(); mapApi.refresh(); });
+setInterval(render, 60000); // ανανέωση διάρκειας
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

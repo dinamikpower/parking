@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ΠΡΟΣΩΡΙΝΟ: ανοιχτό για όποιον έχει το link της εφαρμογής.
+    // Πριν μπουν πραγματικά τηλέφωνα πελατών, πρέπει να μπει login (βλ. επόμενο βήμα).
+    match /vehicles/{id} {
+      allow read, write: if true;
+    }
+    match /maps/{id} {
+      allow read, write: if true;
+    }
+  }
+}
