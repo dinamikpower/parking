@@ -46,6 +46,7 @@ const CSS = `
 #mapDlg.erase .shp{pointer-events:auto}
 #mapDlg.erase .mp-svg polyline.hit{pointer-events:stroke}
 #mapDlg.erase .mp-svg polygon.hit{pointer-events:all}
+#mapDlg.edt .shp b,#mapDlg.edt .shp-l{pointer-events:auto;cursor:text}
 #mapDlg.pickz .shp{pointer-events:auto;cursor:pointer}
 #mapDlg.pickz .mp-svg polyline.hit{pointer-events:stroke}
 #mapDlg.pickz .mp-svg polygon.hit{pointer-events:all}
@@ -316,7 +317,7 @@ export function initMap(ctx){
   let remote = { list:[], size:3.2, lsize:2.4, shapes:[] }; // τελευταία κατάσταση από τη βάση
   let doc = { list:[], size:3.2, lsize:2.4, shapes:[] }; // τοπική κατάσταση (αλλάζει στην επεξεργασία)
   const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ffffff'];
-  let tool = 'spot', color = COLORS[4], drawing = null;   // εργαλείο: pan | spot | name | rect | pen | erase
+  let tool = 'spot', color = COLORS[4], drawing = null;   // εργαλείο: pan | spot | rect | pen | erase
   let mode = 'browse', editing = false, pickCb = null;
   let zoneFilter = null, focusKey = null, selected = null, startLabel = null, lastLabel = '', undo = [];
   let s = 1, tx = 0, ty = 0, baseW = 0, baseH = 0, saveT = null;
@@ -496,9 +497,14 @@ export function initMap(ctx){
       const sh = target.closest?.('[data-si]');
       if (sh){ const s = doc.shapes[+sh.dataset.si]; if (s?.n) return finishPick(s.n); return toast('Αυτή η περιοχή δεν έχει όνομα — δώσε της όνομα από την επεξεργασία χάρτη'); }
     }
+    if (editing && tool!=='erase' && !isDrawTool()){          // πάτημα πάνω στην ετικέτα μιας περιοχής → αλλαγή ονόματος
+      const lb = target.closest?.('.shp-l, .shp b');
+      const sh = lb && lb.closest('[data-si]');
+      if (sh){ const i = +sh.dataset.si, n = prompt('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος):', doc.shapes[i]?.n || ''); if (n!==null && n.trim()) mutate(()=>{ doc.shapes[i].n = n.trim(); }); return; }
+    }
     if (editing){
       if (tool==='erase'){ const sh = target.closest?.('[data-si]'); if (sh){ const i = +sh.dataset.si; mutate(()=>doc.shapes.splice(i,1)); } return; }
-      if (tool==='pan' || tool==='name'){ const sh = target.closest?.('[data-si]'); if (sh){ const i = +sh.dataset.si, n = prompt('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος):', doc.shapes[i]?.n || ''); if (n!==null && n.trim()) mutate(()=>{ doc.shapes[i].n = n.trim(); }); } return; }
+      if (tool==='pan'){ const sh = target.closest?.('[data-si]'); if (sh){ const i = +sh.dataset.si, n = prompt('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος):', doc.shapes[i]?.n || ''); if (n!==null && n.trim()) mutate(()=>{ doc.shapes[i].n = n.trim(); }); } return; }
       if (tool==='spot'){
         const q = pointPct(e.clientX, e.clientY);
         if (q.x<0||q.x>100||q.y<0||q.y>100) return;
@@ -676,10 +682,9 @@ export function initMap(ctx){
         pen:   'Σύρε ελεύθερα: η γραμμή ισιώνει αυτόματα και αν κλείσεις το σχήμα γίνεται περιοχή. Μετά του δίνεις όνομα.',
         erase: 'Πάτα ένα σχήμα (ορθογώνιο, περιοχή ή γραμμή) για να το σβήσεις.',
       }[tool];
-      const TOOLS = [['pan','✋','Κίνηση'],['spot','📍','Θέσεις'],['name','🔤','Όνομα'],['rect','▭','Ορθογώνιο'],['pen','✏️','Σχέδιο'],['erase','🗑','Σβήσιμο']];
+      const TOOLS = [['pan','✋','Κίνηση'],['spot','📍','Θέσεις'],['rect','▭','Ορθογώνιο'],['pen','✏️','Σχέδιο'],['erase','🗑','Σβήσιμο']];
       foot.innerHTML = `<div class="hint">${HINT}</div>
-        ${tool==='name' ? '<div class="mp-hint">Πάτα πάνω σε σχήμα για να γράψεις/αλλάξεις το όνομά του.</div>' : ''}
-        <div class="mp-tools">${TOOLS.map(([t,i,n])=>`<button class="mp-tool ${tool===t?'on':''}" data-a="tool" data-t="${t}">${i} ${n}</button>`).join('')}</div>
+                <div class="mp-tools">${TOOLS.map(([t,i,n])=>`<button class="mp-tool ${tool===t?'on':''}" data-a="tool" data-t="${t}">${i} ${n}</button>`).join('')}</div>
         ${(tool==='rect'||tool==='pen') ? `<div class="mp-tools">${COLORS.map(c=>`<button class="mp-sw ${c===color?'on':''}" data-a="color" data-c="${c}" style="background:${c}" aria-label="χρώμα"></button>`).join('')}</div>` : ''}
         ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
         <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
@@ -702,7 +707,7 @@ export function initMap(ctx){
       if (sh.n){
         const xs = sh.pts.map(p=>+p[0]), ys = sh.pts.map(p=>+p[1]);
         const m = sh.t==='g' ? [(Math.min(...xs)+Math.max(...xs))/2, (Math.min(...ys)+Math.max(...ys))/2] : sh.pts[Math.floor(sh.pts.length/2)];
-        labels += `<div class="shp-l" style="left:${+m[0]}%;top:${+m[1]}%">${esc(sh.n)}</div>`;
+        labels += `<div class="shp-l" data-si="${i}" style="left:${+m[0]}%;top:${+m[1]}%">${esc(sh.n)}</div>`;
       }
       return sh.t==='g'
         ? `<polygon points="${pts}" stroke="${c}" fill="${c}" fill-opacity=".22"/><polygon class="hit" data-si="${i}" points="${pts}"/>`
@@ -711,7 +716,8 @@ export function initMap(ctx){
     shapesEl.innerHTML = rects + `<svg class="mp-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>` + labels;
   }
   function render(){
-    dlg.classList.toggle('erase', editing && (tool==='erase' || tool==='pan' || tool==='name'));
+    dlg.classList.toggle('erase', editing && (tool==='erase' || tool==='pan'));
+    dlg.classList.toggle('edt', editing && tool!=='erase' && tool!=='rect' && tool!=='pen');
     dlg.classList.toggle('pickz', mode==='pick' && !editing);
     const occ = occupancy(), total = doc.list.length;
     let used = 0; for (const p of doc.list) if (occ.has(key(p.l))) used++;
