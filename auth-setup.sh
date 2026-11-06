@@ -10,7 +10,17 @@ case "${1:-}" in
   enable)
     TOKEN=$(gcloud auth print-access-token 2>/dev/null || true)
     if [ -z "$TOKEN" ]; then
-      echo "Χρειάζεται gcloud:  gcloud auth login   (ή άνοιξε: https://console.firebase.google.com/project/$PROJECT/authentication/providers → Email/Password → Ενεργοποίηση)"; exit 1
+      # χωρίς gcloud: χρησιμοποιεί τη σύνδεση του firebase CLI (firebase login)
+      [ -f "$HOME/.config/configstore/firebase-tools.json" ] || firebase login
+      TOKEN=$(node -e '
+        const c=require(process.env.HOME+"/.config/configstore/firebase-tools.json"), rt=c.tokens&&c.tokens.refresh_token;
+        if(!rt){process.exit(0)}
+        fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},
+          body:new URLSearchParams({grant_type:"refresh_token",refresh_token:rt,client_id:"563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com",client_secret:"j9iVZfS8kkCEFUPaAeJV0sAi"})})
+        .then(r=>r.json()).then(j=>process.stdout.write(j.access_token||"")).catch(()=>{})' 2>/dev/null || true)
+    fi
+    if [ -z "$TOKEN" ]; then
+      echo "Δεν βρέθηκε σύνδεση. Τρέξε:  firebase login   και ξανά  ./auth-setup.sh enable"; exit 1
     fi
     # ξεκινά το Authentication (αν δεν έχει ξεκινήσει) και ενεργοποιεί email+κωδικό
     curl -sS -X POST -H "Authorization: Bearer $TOKEN" -H "X-Goog-User-Project: $PROJECT" -H "Content-Type: application/json" \
