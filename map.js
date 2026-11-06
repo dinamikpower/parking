@@ -63,7 +63,7 @@ const CSS = `
 .mp-sheet .m{color:var(--muted);font-size:14px;margin-top:6px}
 .mp-foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mp-foot{transition:opacity .12s}
-#mapDlg.editing .mp-foot{position:absolute;left:0;right:0;bottom:0;z-index:5;box-shadow:0 -4px 14px rgba(0,0,0,.25);max-height:55%;overflow:auto}
+#mapDlg.editing .mp-foot{min-height:136px;align-content:flex-start}
 .mp-ask{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding-top:18vh}
 .mp-ask form{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;width:min(92vw,380px);display:flex;flex-direction:column;gap:12px}
 .mp-ask .t{font-size:15px;color:var(--muted)}
@@ -364,7 +364,7 @@ export function initMap(ctx){
     if (id) unsubMap = store.subscribeMap(id, ({ img:i, spots, shapes }) => {
       mapImg = i && i.image ? i : null;
       remote = { list: (spots?.list)||[], size: spots?.size||3.2, lsize: spots?.lsize||2.4, shapes: decShapes(shapes?.list) };
-      if (!editing && Date.now() > holdRemoteUntil) doc = cloneRemote();
+      if ((!editing || !dirty) && Date.now() > holdRemoteUntil) doc = cloneRemote();
       loaded = true;
       if (dlg.open){ render(); if (afterLoad){ const f = afterLoad; afterLoad = null; requestAnimationFrame(f); } }
       onChange?.();
@@ -384,9 +384,10 @@ export function initMap(ctx){
   // Παίρνει πρώτα φωτογραφία της κατάστασης και μετά στέλνει: αλλιώς μια απάντηση της βάσης ανάμεσα στις δύο αποθηκεύσεις μπορούσε να αντικαταστήσει τα σχέδια
   const saveAll = () => { if (!curId) return Promise.resolve(); const id = curId, list = doc.list, size = doc.size, lsize = doc.lsize, shapes = doc.shapes;
     return Promise.all([ store.saveSpots(id, { list, size, lsize }), store.saveShapes(id, { list:encShapes(shapes) }) ]); };
+  let dirty = false;
   function scheduleSave(){
-    clearTimeout(saveT);
-    saveT = setTimeout(()=>saveAll().catch(e=>toast('Σφάλμα αποθήκευσης: '+e.message)), 500);
+    clearTimeout(saveT); dirty = true;
+    saveT = setTimeout(()=>{ saveT = null; holdRemoteUntil = Date.now() + 2500; saveAll().then(()=>{ if (!saveT) dirty = false; }).catch(e=>toast('Σφάλμα αποθήκευσης: '+e.message)); }, 500);
   }
   const snap = () => JSON.stringify({ list:doc.list, shapes:doc.shapes });
   function mutate(fn){ undo.push(snap()); if (undo.length>50) undo.shift(); fn(); scheduleSave(); render(); }
@@ -511,7 +512,8 @@ export function initMap(ctx){
           else if (q.x>=0 && q.x<=100 && q.y>=0 && q.y<=100) emptyMenu(+q.x.toFixed(2), +q.y.toFixed(2), fe);
         }, 450);
       }
-      else { const sp = e.target.closest?.('.spot'); if (editing && sp && !pend) dragSpot = +sp.dataset.i; }
+      else { const sp = e.target.closest?.('.spot');
+        if (editing && sp && !pend){ const i = +sp.dataset.i; lpTimer = setTimeout(() => { lpTimer = null; if (!moved && ptrs.size===1){ dragSpot = i; navigator.vibrate?.(30); toast('Σύρε για να μετακινήσεις τη θέση'); } }, 450); } }
     }
     if (ptrs.size===2){ moved = true; dragSpot = null; pinch = null; if (drawing){ drawing.el?.remove(); drawing = null; } }   // δύο δάχτυλα = zoom/μετακίνηση
   });
@@ -635,20 +637,16 @@ export function initMap(ctx){
     const sp = doc.list[selected];
     if (!sp){ sheet.hidden = true; return; }
     sheet.hidden = false;
-    if (editing){
-      sheet.innerHTML = `<b>Θέση</b> <input id="mpLab" value="${esc(sp.l)}" autocapitalize="characters">
-        <div class="mp-row"><button class="btn primary" data-a="rename">Αποθήκευση ονόματος</button><button class="btn danger" data-a="del">Διαγραφή θέσης</button><button class="btn" data-a="closesheet">Κλείσιμο</button></div>`;
-      return;
-    }
+    const spEdit = () => editing ? `<div class="mp-row" style="margin-top:8px"><button class="btn" data-a="rename">✎ Όνομα θέσης</button><button class="btn danger" data-a="del">🗑 Διαγραφή θέσης</button></div>` : '';
     const cars = occupancy().get(key(sp.l)) || [];
     if (!cars.length){
       sheet.innerHTML = `<b style="font-size:18px">Θέση ${esc(sp.l)}</b> <span class="m">· ελεύθερη</span>
-        <div class="mp-row"><button class="btn primary" data-a="newhere">+ Νέο όχημα εδώ</button><button class="btn" data-a="closesheet">Κλείσιμο</button></div>`;
+        <div class="mp-row"><button class="btn primary" data-a="newhere">+ Νέο όχημα εδώ</button><button class="btn" data-a="closesheet">Κλείσιμο</button></div>${spEdit()}`;
       return;
     }
     sheet.innerHTML = cars.map(v => `<div style="margin-bottom:10px"><span class="plate">${esc(v.plate)}</span>
       <div class="m">📍 ${esc(v.location)} · ⏱ ${fmtT(v.entryAt)} (${fmtDur(v.entryAt,Date.now())})${v.keyNo?` · 🔑 ${esc(v.keyNo)}`:''}${v.phone?` · <a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>`:''}</div>
-      <div class="mp-row"><button class="btn go" data-a="exit" data-id="${v.id}">Έφυγε ✓</button>${mode==='pick'?`<button class="btn" data-a="usepick">Χρήση της θέσης παρ' όλα αυτά</button>`:''}<button class="btn" data-a="closesheet">Κλείσιμο</button></div></div>`).join('');
+      <div class="mp-row"><button class="btn go" data-a="exit" data-id="${v.id}">Έφυγε ✓</button>${mode==='pick'?`<button class="btn" data-a="usepick">Χρήση της θέσης παρ' όλα αυτά</button>`:''}<button class="btn" data-a="closesheet">Κλείσιμο</button></div></div>`).join('') + spEdit();
   }
 
   dlg.addEventListener('click', async e => {
@@ -719,7 +717,7 @@ export function initMap(ctx){
       } catch(err){ toast('Σφάλμα περικοπής: '+err.message); }
       return;
     }
-    if (a==='selmap'){ if (b.dataset.id===curId) return; if (editing) return toast('Πάτα πρώτα «Τέλος»'); closeSheet(); useMap(b.dataset.id); afterLoad = () => fitAll(); render(); return; }
+    if (a==='selmap'){ if (b.dataset.id===curId) return; closeSheet(); useMap(b.dataset.id); afterLoad = () => fitAll(); render(); return; }
     if (a==='newmap'){
       const name = ((await ask('Όνομα νέου χάρτη (π.χ. Υπόγειο, Πάρκινγκ 2)', 'Χάρτης '+(maps.length+1)))||'').trim(); if (!name) return;
       const id = 'm'+Date.now().toString(36); maps = [...maps, { id, name }];
@@ -735,13 +733,13 @@ export function initMap(ctx){
       if (!confirm('Να διαγραφεί ο χάρτης «'+m.name+'» (φωτογραφία, θέσεις και σχέδια);\nΔεν αναιρείται και φεύγει για όλους τους υπαλλήλους.\nΤα οχήματα δεν επηρεάζονται.')) return;
       clearTimeout(saveT); const id = m.id;
       try { await store.deleteMapData(id); maps = maps.filter(x => x.id!==id); await store.setMaps(maps); } catch(err){ return toast('Σφάλμα διαγραφής: '+err.message); }
-      editing = false; startLabel = null; undo = []; useMap(maps[0]?.id || null); afterLoad = () => fitAll();
+      editing = mode==='browse'; startLabel = null; undo = []; useMap(maps[0]?.id || null); afterLoad = () => fitAll();
       closeSheet(); renderAll(); onChange?.(); toast('Ο χάρτης διαγράφηκε'); return;
     }
     if (a==='zone'){ zoneFilter = b.dataset.z || null; fitZone(); render(); return; }
     if (a==='newzone'){ const l = ((await ask('Πρώτη θέση της νέας ζώνης/σειράς (π.χ. B1)', lastLabel?nextLabel(lastLabel.replace(/\d+$/,'0')):'B1'))||'').trim(); if (l){ startLabel = l; toast('Πάτα στον χάρτη για να μπει η '+l); renderFoot(); } return; }
     if (a==='undo'){ while (undo.length && undo[undo.length-1]===null) undo.pop(); const prev = undo.pop(); if (prev){ const o = JSON.parse(prev); doc.list = o.list; doc.shapes = o.shapes; scheduleSave(); closeSheet(); } return; }
-    if (a==='rename'){ const v = $('#mpLab').value.trim(); if (!v) return; const dup = doc.list.some((p,i)=>i!==selected && key(p.l)===key(v)); if (dup) return toast('Υπάρχει ήδη θέση '+v); mutate(()=>{ doc.list[selected].l = v; }); lastLabel = v; closeSheet(); return; }
+    if (a==='rename'){ const v = ((await ask('Όνομα θέσης', doc.list[selected]?.l || ''))||'').trim(); if (!v) return; const dup = doc.list.some((p,i)=>i!==selected && key(p.l)===key(v)); if (dup) return toast('Υπάρχει ήδη θέση '+v); mutate(()=>{ doc.list[selected].l = v; }); lastLabel = v; closeSheet(); return; }
     if (a==='del'){ mutate(()=>{ doc.list.splice(selected,1); }); closeSheet(); return; }
     if (a==='newhere'){ const l = doc.list[selected].l, id = curId; close(); openNewCarAt(l, id); return; }
     if (a==='exit'){ await exitCar(b.dataset.id); renderSheet(); return; }
@@ -789,15 +787,15 @@ export function initMap(ctx){
         foot.innerHTML = `<div class="hint">${msg}</div>${pend?.k==='poly' ? '<button class="btn primary" data-a="pclose">⬠ Κλείσιμο περιοχής</button><button class="btn" data-a="pline">〰 Γραμμή</button>' : ''}${pend ? '<button class="btn" data-a="pundo">↶ Πίσω</button>' : ''}<button class="btn" data-a="pcancel">✕ Ακύρωση</button>`;
         return;
       }
-      foot.innerHTML = `<div class="hint">Σύρε: κίνηση χάρτη · κράτα πατημένο σε σημείο: θέση ή σχέδιο · πάτα σχήμα: όνομα, χρώμα, διαγραφή</div>
-        <button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="fmore">⚙ ${fmore ? 'Λιγότερα' : 'Ρυθμίσεις'}</button><button class="btn primary" data-a="done" style="margin-left:auto">Τέλος</button>
+      foot.innerHTML = `<div class="hint">Πράσινο: ελεύθερη · Κόκκινο: κατειλημμένη · Κράτα πατημένο σε σημείο: θέση ή σχέδιο · Κράτα πατημένη μια θέση για να τη μετακινήσεις</div>
+        <button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="fmore">⚙ ${fmore ? 'Λιγότερα' : 'Ρυθμίσεις'}</button>
         ${fmore ? `<div class="mp-more"><button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
         <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
         <label>Μέγεθος ονομάτων <input class="mp-lsize" type="range" min="0.8" max="8" step="0.1" value="${doc.lsize||2.4}"></label></div>` : ''}`;
     } else if (mode==='pick'){
       foot.innerHTML = `<div class="hint">Πάτα μια ελεύθερη (πράσινη) θέση ή μια περιοχή που έχεις σχεδιάσει για να την επιλέξεις.</div>`;
     } else {
-      foot.innerHTML = `<div class="hint">Πράσινο: ελεύθερη · Κόκκινο: κατειλημμένη. Πάτα μια θέση για λεπτομέρειες.</div><button class="btn" data-a="edit">✏️ Επεξεργασία χάρτη</button>`;
+      foot.innerHTML = `<div class="hint">Πράσινο: ελεύθερη · Κόκκινο: κατειλημμένη. Πάτα μια θέση για λεπτομέρειες.</div>`;
     }
   }
   const safeColor = c => /^#[0-9a-f]{6}$/i.test(c) ? c : '#3b82f6';
@@ -833,8 +831,8 @@ export function initMap(ctx){
     const occ = occupancy(), total = doc.list.length;
     let used = 0; for (const p of doc.list) if (occ.has(key(p.l))) used++;
     titleEl.innerHTML = `${esc(curMap()?.name || 'Χάρτης παρκινγκ')}<small>${total ? `${total-used} ελεύθερες από ${total}` : 'δεν έχουν οριστεί θέσεις'}</small>`;
-    mapsEl.hidden = editing;
-    mapsEl.innerHTML = editing ? '' : maps.map(m => `<button class="mp-m ${m.id===curId?'on':''}" data-a="selmap" data-id="${esc(m.id)}">${esc(m.name)}</button>`).join('') + (mode==='pick' ? '' : '<button class="mp-m add" data-a="newmap">＋ Νέος χάρτης</button>');
+    mapsEl.hidden = false;
+    mapsEl.innerHTML = maps.map(m => `<button class="mp-m ${m.id===curId?'on':''}" data-a="selmap" data-id="${esc(m.id)}">${esc(m.name)}</button>`).join('') + (mode==='pick' ? '' : '<button class="mp-m add" data-a="newmap">＋ Νέος χάρτης</button>');
     const zs = [...new Set(doc.list.map(p=>zoneOf(p.l)))].sort();
     zonesEl.innerHTML = zs.length>1 ? [`<button class="mp-z ${!zoneFilter?'on':''}" data-a="zone" data-z="">Όλες</button>`, ...zs.map(z=>`<button class="mp-z ${zoneFilter===z?'on':''}" data-a="zone" data-z="${esc(z)}">${esc(z)}</button>`)].join('') : '';
     if (!mapImg){
@@ -849,7 +847,7 @@ export function initMap(ctx){
       layout(); renderShapes();
       spotsEl.innerHTML = doc.list.map((p,i) => {
         const o = occ.has(key(p.l)), z = zoneOf(p.l);
-        const cls = editing ? 'ed' : (o ? 'occ' : 'free');
+        const cls = o ? 'occ' : 'free';
         const dim = zoneFilter && z!==zoneFilter ? ' dim' : '';
         const foc = (focusKey && key(p.l)===focusKey) || selected===i ? ' focus' : '';
         return `<div class="spot ${cls}${dim}${foc}" data-i="${i}" style="left:${p.x}%;top:${p.y}%">${esc(p.l)}</div>`;
@@ -870,7 +868,7 @@ export function initMap(ctx){
     return curId;
   }
   function open(o = {}){
-    mode = o.mode || 'browse'; pickCb = o.onPick || null; editing = false; selected = null; zoneFilter = null; startLabel = null; undo = []; tool = 'pan'; pend = null; drawing = null;
+    mode = o.mode || 'browse'; pickCb = o.onPick || null; editing = (o.mode||'browse')==='browse'; selected = null; zoneFilter = null; startLabel = null; undo = []; tool = 'pan'; pend = null; drawing = null;
     focusKey = o.focus ? key(o.focus) : null;
     const target = o.focus ? findMapFor(o.focus, o.mapId) : (o.mapId && maps.some(m => m.id===o.mapId) ? o.mapId : curId);
     const switched = target && target!==curId;
