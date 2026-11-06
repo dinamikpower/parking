@@ -35,12 +35,12 @@ const CSS = `
 .mp-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px;text-align:center;color:#cbd5e1}
 .mp-shapes{position:absolute;inset:0;pointer-events:none}
 .mp-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-.mp-svg polyline{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-width:4px}
+.mp-svg polyline{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-width:2px}
 .mp-svg polyline.hit{stroke:transparent;stroke-width:24px}
-.mp-svg polygon{stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-width:4px}
+.mp-svg polygon{stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-width:2px}
 .mp-svg polygon.hit{fill:transparent;stroke:transparent;stroke-width:24px}
 .shp-l{position:absolute;transform:translate(-50%,-50%);font-size:var(--lb,12px);font-weight:700;color:#fff;background:rgba(0,0,0,.62);padding:.06em .5em;border-radius:.4em;line-height:1.3;white-space:nowrap;pointer-events:none}
-.shp{position:absolute;box-sizing:border-box;border:3px solid;border-radius:4px;pointer-events:none}
+.shp{position:absolute;box-sizing:border-box;border:2px solid;border-radius:3px;pointer-events:none}
 .shp b{display:inline-block;font-size:var(--lb,12px);color:#fff;background:rgba(0,0,0,.6);padding:.06em .5em;border-radius:0 0 .4em 0;line-height:1.3;white-space:nowrap;overflow:hidden;max-width:100%}
 .shp.prev{border-style:dashed}
 #mapDlg.erase .shp{pointer-events:auto}
@@ -412,7 +412,7 @@ export function initMap(ctx){
     if (drawing.type==='rect'){
       if (!drawing.el){
         drawing.el = document.createElement('div'); drawing.el.className = 'shp prev';
-        drawing.el.style.borderColor = color; drawing.el.style.background = color+'33'; shapesEl.append(drawing.el);
+        drawing.el.style.borderColor = color; drawing.el.style.background = color+"38"; shapesEl.append(drawing.el);
       }
       Object.assign(drawing.el.style, { left:Math.min(drawing.x0,x)+'%', top:Math.min(drawing.y0,y)+'%', width:Math.abs(x-drawing.x0)+'%', height:Math.abs(y-drawing.y0)+'%' });
       drawing.x1 = x; drawing.y1 = y;
@@ -692,7 +692,7 @@ export function initMap(ctx){
   const safeColor = c => /^#[0-9a-f]{6}$/i.test(c) ? c : '#3b82f6';
   function renderShapes(){
     const rects = doc.shapes.map((sh,i) => sh.t!=='r' ? '' :
-      `<div class="shp" data-si="${i}" style="left:${+sh.x}%;top:${+sh.y}%;width:${+sh.w}%;height:${+sh.h}%;border-color:${safeColor(sh.c)};background:${safeColor(sh.c)}2e">${sh.n?`<b>${esc(sh.n)}</b>`:''}</div>`).join('');
+      `<div class="shp" data-si="${i}" style="left:${+sh.x}%;top:${+sh.y}%;width:${+sh.w}%;height:${+sh.h}%;border-color:${safeColor(sh.c)};background:${safeColor(sh.c)}38">${sh.n?`<b>${esc(sh.n)}</b>`:''}</div>`).join('');
     let labels = '';
     const lines = doc.shapes.map((sh,i) => {
       if ((sh.t!=='p' && sh.t!=='g') || !Array.isArray(sh.pts) || !sh.pts.length) return '';
@@ -703,7 +703,7 @@ export function initMap(ctx){
         labels += `<div class="shp-l" style="left:${+m[0]}%;top:${+m[1]}%">${esc(sh.n)}</div>`;
       }
       return sh.t==='g'
-        ? `<polygon points="${pts}" stroke="${c}" fill="${c}" fill-opacity=".18"/><polygon class="hit" data-si="${i}" points="${pts}"/>`
+        ? `<polygon points="${pts}" stroke="${c}" fill="${c}" fill-opacity=".22"/><polygon class="hit" data-si="${i}" points="${pts}"/>`
         : `<polyline points="${pts}" stroke="${c}"/><polyline class="hit" data-si="${i}" points="${pts}"/>`;
     }).join('');
     shapesEl.innerHTML = rects + `<svg class="mp-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>` + labels;
