@@ -111,12 +111,38 @@ export async function requireLogin(app, db, fs, CFG, onReady){
       ${me.admin ? `<div id="stl"><div class="sub">Φόρτωση προσωπικού…</div></div>
         <form id="stf"><b>Νέος υπάλληλος</b><input name="name" placeholder="Όνομα" required><input name="email" type="email" placeholder="Email" autocapitalize="off" required>
         <input name="pw" type="text" placeholder="Προσωρινός κωδικός (min 6)" minlength="6" required autocapitalize="off" autocomplete="off">
-        <div class="row"><button class="p" type="submit">+ Προσθήκη</button></div><div class="m"></div></form>` : ''}
+        <div class="row"><button class="p" type="submit">+ Προσθήκη</button></div><div class="m"></div></form>
+        <div class="row"><button data-a="restore">🛟 Εύρεση χαμένων χαρτών</button></div>` : ''}
       <div class="row"><button data-a="pw">Αλλαγή κωδικού (email)</button><button data-a="out" class="d">Αποσύνδεση</button></div><div class="row"><button data-a="x">Κλείσιμο</button></div><div class="m" id="um"></div></div>`;
     ud.querySelector('[data-a=x]').onclick = () => ud.close();
     ud.querySelector('[data-a=out]').onclick = async () => { if (confirm('Αποσύνδεση;')) { await A.signOut(auth); location.reload(); } };
     ud.querySelector('[data-a=pw]').onclick = async () => { const m = ud.querySelector('#um'); try { await A.sendPasswordResetEmail(auth, me.email); m.textContent = 'Στάλθηκε email για νέο κωδικό.'; } catch (e) { m.textContent = msg(e); } };
-    if (me.admin) loadStaff();
+    if (me.admin){ loadStaff(); ud.querySelector('[data-a=restore]').onclick = restoreMaps; }
+  }
+
+  // Ψάχνει στη βάση όλα τα δεδομένα χαρτών και προσθέτει στη λίστα όσους λείπουν από αυτήν
+  async function restoreMaps(){
+    const m = ud.querySelector('#um'); m.style.color = ''; m.textContent = 'Αναζήτηση…';
+    try {
+      const snap = await fs.getDocs(fs.collection(db, 'maps')), found = {};
+      snap.docs.forEach(d => {
+        const k = d.id, v = d.data(); if (k === 'index') return;
+        let id, part;
+        if (k === 'main') { id = 'main'; part = 'img'; } else if (k === 'spots') { id = 'main'; part = 'spots'; } else if (k === 'shapes') { id = 'main'; part = 'shapes'; }
+        else if (k.endsWith('_spots')) { id = k.slice(0, -6); part = 'spots'; } else if (k.endsWith('_shapes')) { id = k.slice(0, -7); part = 'shapes'; } else { id = k; part = 'img'; }
+        const f = found[id] || (found[id] = { img: false, spots: 0, shapes: 0 });
+        if (part === 'img') f.img = !!v.image; else f[part] = (v.list || []).length;
+      });
+      const idxRef = fs.doc(db, 'maps', 'index'), idxSnap = await fs.getDoc(idxRef);
+      const list = idxSnap.exists() ? (idxSnap.data().list || []) : [{ id: 'main', name: 'Χάρτης 1' }];
+      let added = 0;
+      Object.entries(found).forEach(([id, f]) => {
+        if (list.some(x => x.id === id) || !(f.img || f.spots || f.shapes)) return;
+        const e = { id, name: 'Χάρτης ' + (list.length + 1) + ' (επαναφορά)' }; if (!f.img) e.type = 'live'; list.push(e); added++;
+      });
+      if (added) await fs.setDoc(idxRef, { list, updatedAt: Date.now() });
+      m.style.color = added ? '#166534' : ''; m.textContent = added ? `✓ Βρέθηκαν και προστέθηκαν ${added} χάρτες. Κλείσε και άνοιξε τη λίστα χαρτών.` : `Δεν βρέθηκαν χαμένοι χάρτες (σύνολο δεδομένων: ${Object.keys(found).length}).`;
+    } catch (e) { m.style.color = '#b91c1c'; m.textContent = msg(e); }
   }
 
   async function loadStaff(){
