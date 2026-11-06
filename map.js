@@ -332,6 +332,16 @@ export function initMap(ctx){
   });
   img.addEventListener('load', () => { layout(); if (dlg.open) fitAll(); });
   window.addEventListener('resize', () => { if (dlg.open){ layout(); apply(); } });
+  // όταν αλλάζει το μέγεθος του χώρου του χάρτη (π.χ. μεγαλώνει η μπάρα εργαλείων) ξαναπροσαρμόζεται
+  if (window.ResizeObserver){
+    let lw = 0, lh = 0, rt;
+    new ResizeObserver(() => {
+      if (!dlg.open || !vp.clientWidth) return;
+      const w = vp.clientWidth, h = vp.clientHeight; if (w===lw && h===lh) return;
+      const first = !lw; lw = w; lh = h;
+      clearTimeout(rt); rt = setTimeout(() => { if (s===1 || first) fitAll(); else { layout(); apply(); } }, 60);
+    }).observe(vp);
+  }
   dlg.addEventListener('close', () => { editing = false; ptrs.clear(); });
 
   function fitZone(){
