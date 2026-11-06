@@ -72,6 +72,17 @@ const CSS = `
 .cr-rect i[data-h=sw]{left:-15px;bottom:-15px}.cr-rect i[data-h=se]{right:-15px;bottom:-15px}
 .cr-foot{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
 .cr-foot .btn{flex:1}
+#geoDlg{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;border-radius:0;padding:0;background:#0b1220;color:#fff;overflow:hidden}
+#geoDlg[open]{display:flex;flex-direction:column}
+#geoDlg::backdrop{background:#000}
+.geo-head{flex:none;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.geo-head b{flex:1 1 100%;font-size:15px}
+.geo-head small{flex:1 1 100%;color:#94a3b8;font-size:12px}
+.geo-head input{flex:1;min-width:0;font-size:16px;padding:10px;border-radius:10px;border:0}
+.geo-head button{padding:10px 12px;border-radius:10px;border:0;background:#334155;color:#fff;font-size:15px;font-weight:600}
+.geo-map{flex:1;min-height:0;background:#1e293b}
+.geo-foot{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
+.geo-foot .btn{flex:1}
 `;
 
 const MAXCHARS = 880000;           // όριο μεγέθους εικόνας (το έγγραφο Firestore δέχεται ~1MB)
@@ -141,6 +152,81 @@ async function cropToCanvas(src, r){
   const sw = Math.max(1, Math.round(r.w*bmp.width)), sh = Math.max(1, Math.round(r.h*bmp.height));
   const c = document.createElement('canvas'); c.width = sw; c.height = sh;
   c.getContext('2d').drawImage(bmp, sx, sy, sw, sh, 0, 0, sw, sh);
+  return c;
+}
+
+/* ---------- Ζωντανός δορυφορικός χάρτης (Esri World Imagery μέσω Leaflet) → εικόνα ---------- */
+const TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+const TILE_ATTR = 'Esri, Maxar, Earthstar Geographics, GIS User Community';
+function loadLeaflet(){
+  if (window.L) return Promise.resolve(window.L);
+  return new Promise((ok, bad) => {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.append(css);
+    const sc = document.createElement('script'); sc.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    sc.onload = () => ok(window.L); sc.onerror = () => bad(new Error('Δεν φορτώθηκε ο χάρτης (έλεγξε τη σύνδεση)'));
+    document.head.append(sc);
+  });
+}
+function loadTile(url){
+  return new Promise(ok => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => ok(im); im.onerror = () => ok(null); im.src = url; });
+}
+// Ανοίγει τον ζωντανό χάρτη· επιστρέφει canvas με την περιοχή που φαίνεται ή null αν ακυρωθεί.
+async function pickFromMap(toast){
+  const L = await loadLeaflet();
+  return new Promise(res => {
+    const d = document.createElement('dialog'); d.id = 'geoDlg';
+    d.innerHTML = `<div class="geo-head"><b>Διάλεξε την περιοχή του παρκινγκ</b>
+        <input class="geo-q" type="search" placeholder="Διεύθυνση ή περιοχή (π.χ. Πατησίων 10, Αθήνα)" enterkeyhint="search"><button data-g="search">🔍</button><button data-g="loc" aria-label="Η τοποθεσία μου">📍</button>
+        <small>Μετακίνησε και κάνε zoom ώστε να φαίνεται όλο το παρκινγκ. Ό,τι βλέπεις στην οθόνη γίνεται η εικόνα του χάρτη.</small></div>
+      <div class="geo-map"></div>
+      <div class="geo-foot"><button class="btn" data-g="cancel">Άκυρο</button><button class="btn primary" data-g="shot">📸 Λήψη εικόνας</button></div>`;
+    document.body.append(d);
+    let view; try { view = JSON.parse(localStorage.getItem('parking-geo-view')); } catch {}
+    const map = L.map(d.querySelector('.geo-map'), { zoomControl:true, attributionControl:true, maxZoom:19 }).setView(view ? [view.lat, view.lng] : [37.98, 23.73], view ? view.z : 12);
+    L.tileLayer(TILE_URL, { maxNativeZoom:19, maxZoom:19, attribution:TILE_ATTR, crossOrigin:'anonymous' }).addTo(map);
+    const done = v => { try { localStorage.setItem('parking-geo-view', JSON.stringify({ lat:map.getCenter().lat, lng:map.getCenter().lng, z:map.getZoom() })); } catch {} map.remove(); d.close(); d.remove(); res(v); };
+    const search = async () => {
+      const q = d.querySelector('.geo-q').value.trim(); if (!q) return;
+      try {
+        const r = await (await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q), { headers:{ 'Accept-Language':'el' } })).json();
+        if (!r[0]) return toast('Δεν βρέθηκε η διεύθυνση');
+        map.setView([+r[0].lat, +r[0].lon], 18);
+      } catch { toast('Η αναζήτηση δεν δούλεψε, μετακίνησε τον χάρτη με το χέρι'); }
+    };
+    d.addEventListener('cancel', e => { e.preventDefault(); done(null); });
+    d.querySelector('.geo-q').addEventListener('keydown', e => { if (e.key==='Enter'){ e.preventDefault(); search(); } });
+    d.addEventListener('click', async e => {
+      const g = e.target.closest('[data-g]')?.dataset.g; if (!g) return;
+      if (g==='cancel') return done(null);
+      if (g==='search') return search();
+      if (g==='loc'){ if (!navigator.geolocation) return toast('Δεν υπάρχει GPS'); navigator.geolocation.getCurrentPosition(p => map.setView([p.coords.latitude, p.coords.longitude], 18), () => toast('Δεν δόθηκε άδεια τοποθεσίας')); return; }
+      if (g==='shot'){
+        const btn = e.target.closest('button'); btn.disabled = true; btn.textContent = 'Λήψη…';
+        try { done(await captureView(L, map)); }
+        catch(err){ btn.disabled = false; btn.textContent = '📸 Λήψη εικόνας'; toast(err.message || 'Η λήψη απέτυχε'); }
+      }
+    });
+    d.showModal(); setTimeout(() => map.invalidateSize(), 50);
+  });
+}
+// Ράβει τα πλακίδια της τρέχουσας προβολής σε ένα canvas (σε διπλάσια ανάλυση όταν γίνεται)
+async function captureView(L, map){
+  const b = map.getBounds();
+  let z = Math.min(map.getZoom()+1, 19), p0, p1;
+  for (;;){ p0 = map.project(b.getNorthWest(), z); p1 = map.project(b.getSouthEast(), z); if ((p1.x-p0.x) <= 2000 && (p1.y-p0.y) <= 2000 || z <= map.getZoom()) break; z--; }
+  const W = Math.round(p1.x-p0.x), H = Math.round(p1.y-p0.y);
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  const n = 2**z, jobs = [];
+  for (let ty = Math.floor(p0.y/256); ty <= Math.floor(p1.y/256); ty++)
+    for (let tx = Math.floor(p0.x/256); tx <= Math.floor(p1.x/256); tx++){
+      if (ty<0 || ty>=n) continue; const wx = ((tx % n)+n) % n;
+      jobs.push(loadTile(TILE_URL.replace('{z}',z).replace('{y}',ty).replace('{x}',wx)).then(im => { if (im) x.drawImage(im, Math.round(tx*256-p0.x), Math.round(ty*256-p0.y)); return !!im; }));
+    }
+  const ok = (await Promise.all(jobs)).filter(Boolean).length;
+  if (!ok) throw new Error('Δεν κατέβηκαν εικόνες χάρτη, δοκίμασε ξανά');
+  x.font = `${Math.max(11, Math.round(W/70))}px sans-serif`; x.textAlign = 'right'; x.fillStyle = '#fff'; x.shadowColor = '#000'; x.shadowBlur = 4;
+  x.fillText('© '+TILE_ATTR, W-8, H-8);
+  try { c.toDataURL('image/jpeg', .5); } catch { throw new Error('Ο browser δεν επιτρέπει την αποθήκευση αυτής της εικόνας'); }
   return c;
 }
 
@@ -405,6 +491,18 @@ export function initMap(ctx){
     if (a==='tool'){ tool = b.dataset.t; startLabel = null; closeSheet(); return; }
     if (a==='color'){ color = b.dataset.c; renderFoot(); return; }
     if (a==='pickimg' || a==='img') return fileEl.click();
+    if (a==='geoimg'){
+      if (!curId) return;
+      if (mapImg && doc.list.length && !confirm('Αν αλλάξεις εικόνα, οι θέσεις μένουν στα ίδια σημεία. Συνέχεια;')) return;
+      try {
+        const canvas = await pickFromMap(toast); if (!canvas) return;
+        const url = canvas.toDataURL('image/jpeg', .92); const r = await cropDialog(url); if (!r) return;
+        toast('Επεξεργασία εικόνας…'); const full = r.x===0 && r.y===0 && r.w===1 && r.h===1;
+        const o = await compressImage(full ? canvas : await cropToCanvas(url, r)); await store.saveImage(curId, o);
+        editing = true; mode = 'browse'; toast('Η εικόνα αποθηκεύτηκε'); setTimeout(()=>{ renderAll(); fitAll(); }, 150);
+      } catch(err){ toast('Σφάλμα: '+err.message); }
+      return;
+    }
     if (a==='cropimg'){
       if (!mapImg) return;
       const r = await cropDialog(mapImg.image); if (!r || (r.x===0 && r.y===0 && r.w===1 && r.h===1)) return;
@@ -502,7 +600,7 @@ export function initMap(ctx){
       foot.innerHTML = `<div class="hint">${HINT}</div>
         <div class="mp-tools">${TOOLS.map(([t,i,n])=>`<button class="mp-tool ${tool===t?'on':''}" data-a="tool" data-t="${t}">${i} ${n}</button>`).join('')}</div>
         ${(tool==='rect'||tool==='pen') ? `<div class="mp-tools">${COLORS.map(c=>`<button class="mp-sw ${c===color?'on':''}" data-a="color" data-c="${c}" style="background:${c}" aria-label="χρώμα"></button>`).join('')}</div>` : ''}
-        ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
+        ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
         <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
         <button class="btn primary" data-a="done" style="margin-left:auto">Τέλος</button>`;
     } else if (mode==='pick'){
@@ -536,7 +634,7 @@ export function initMap(ctx){
       emptyEl.innerHTML = !curId
         ? `<div style="font-size:42px">🗺️</div><div>Δεν υπάρχει χάρτης ακόμα.<br>Φτιάξε έναν και ανέβασε φωτογραφία ή σχέδιο του παρκινγκ.</div><button class="btn primary" data-a="newmap">＋ Νέος χάρτης</button>`
         : !loaded ? `<div>Φόρτωση…</div>`
-        : `<div style="font-size:42px">🗺️</div><div>Ο χάρτης «${esc(curMap()?.name||'')}» δεν έχει εικόνα ακόμα.<br>Ανέβασε μια φωτογραφία ή σχέδιο του παρκινγκ (π.χ. από ψηλά ή κάτοψη) και βάλε πάνω της τις θέσεις.</div><button class="btn primary" data-a="pickimg">📷 Ανέβασμα εικόνας</button>`;
+        : `<div style="font-size:42px">🗺️</div><div>Ο χάρτης «${esc(curMap()?.name||'')}» δεν έχει εικόνα ακόμα.<br>Ανέβασε μια φωτογραφία ή σχέδιο του παρκινγκ (π.χ. από ψηλά ή κάτοψη) και βάλε πάνω της τις θέσεις.</div><div class="mp-row"><button class="btn primary" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="pickimg">📷 Ανέβασμα εικόνας</button></div>`;
     } else {
       emptyEl.hidden = true; stage.style.display = '';
       if (img.getAttribute('src') !== mapImg.image) img.src = mapImg.image;
