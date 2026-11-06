@@ -64,6 +64,11 @@ const CSS = `
 .mp-foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mp-foot{transition:opacity .12s}
 #mapDlg.editing .mp-foot{position:absolute;left:0;right:0;bottom:0;z-index:5;box-shadow:0 -4px 14px rgba(0,0,0,.25);max-height:55%;overflow:auto}
+.mp-ask{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding-top:18vh}
+.mp-ask form{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;width:min(92vw,380px);display:flex;flex-direction:column;gap:12px}
+.mp-ask .t{font-size:15px;color:var(--muted)}
+.mp-ask input{font-size:18px;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+.mp-ask .r{display:flex;gap:8px;justify-content:flex-end}
 .mp-more{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mp-ctx{position:fixed;z-index:20;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.45);padding:6px;display:flex;flex-direction:column;gap:2px;min-width:190px}
 .mp-ctx[hidden]{display:none}
@@ -449,24 +454,37 @@ export function initMap(ctx){
     }
   }
   // Κάθε σχήμα παίρνει υποχρεωτικά όνομα (προτείνεται αυτόματα, αν ακυρώσεις δεν αποθηκεύεται)
-  function askName(){
+  // Παράθυρο ονόματος μέσα στην εφαρμογή (το prompt() του browser δεν ανοίγει πάντα το πληκτρολόγιο στο κινητό)
+  function ask(title, def=''){
+    return new Promise(res => {
+      const o = document.createElement('div'); o.className = 'mp-ask';
+      o.innerHTML = '<form><div class="t"></div><input type="text" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"><div class="r"><button type="button" class="btn" data-x="c">Άκυρο</button><button class="btn primary">OK</button></div></form>';
+      o.querySelector('.t').textContent = title;
+      const inp = o.querySelector('input'); inp.value = def;
+      dlg.append(o); inp.focus(); inp.select();
+      const done = v => { o.remove(); res(v); };
+      o.querySelector('form').onsubmit = e => { e.preventDefault(); done(inp.value); };
+      o.querySelector('[data-x=c]').onclick = () => done(null);
+    });
+  }
+  async function askName(){
     const def = 'Ζώνη '+(doc.shapes.length+1);
-    const n = prompt('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος):', def);
+    const n = await ask('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος)', def);
     return n===null ? null : (n.trim() || def);
   }
-  function drawEnd(){
+  async function drawEnd(){
     const d = drawing; drawing = null; d.el?.remove(); tool = 'pan';
     if (d.type==='rect'){
       if (d.x1==null) return;
       const w = Math.abs(d.x1-d.x0), h = Math.abs(d.y1-d.y0);
       if (w<0.8 || h<0.8) return;
-      const name = askName(); if (name===null) return;
+      const name = await askName(); if (name===null) return;
       mutate(()=>doc.shapes.push({ t:'r', x:+Math.min(d.x0,d.x1).toFixed(2), y:+Math.min(d.y0,d.y1).toFixed(2), w:+w.toFixed(2), h:+h.toFixed(2), c:color, n:name }));
     } else {
       if (d.pts.length<2) return;
       const o = beautify(d.pts, mapImg?.w || 1000, mapImg?.h || 1000);
       if (o.t==='p' && o.pts.length<2) return;
-      const name = askName(); if (name===null) return;
+      const name = await askName(); if (name===null) return;
       mutate(()=>doc.shapes.push({ ...o, c:color, n:name }));
     }
   }
@@ -556,29 +574,29 @@ export function initMap(ctx){
     closeCtx(); pend = { k, pts:[[x,y]] };
     toast(k==='rect' ? 'Πάτα την απέναντι γωνία' : 'Πάτα τις επόμενες κορυφές'); render();
   }
-  function pendTap(e){
+  async function pendTap(e){
     const q = pointPct(e.clientX, e.clientY), x = +clampPct(q.x).toFixed(2), y = +clampPct(q.y).toFixed(2);
     if (pend.k==='rect'){
       const [x0,y0] = pend.pts[0], w = Math.abs(x-x0), h = Math.abs(y-y0);
       if (w<0.8 || h<0.8) return toast('Διάλεξε πιο μακρινό σημείο');
-      const name = askName(); if (name===null) return;
+      const name = await askName(); if (name===null) return;
       pend = null; mutate(()=>doc.shapes.push({ t:'r', x:+Math.min(x0,x).toFixed(2), y:+Math.min(y0,y).toFixed(2), w:+w.toFixed(2), h:+h.toFixed(2), c:color, n:name }));
       return;
     }
     pend.pts.push([x,y]); render();
   }
-  function finishPoly(closed){
+  async function finishPoly(closed){
     if (!pend || pend.pts.length < (closed ? 3 : 2)) return toast(closed ? 'Χρειάζονται τουλάχιστον 3 κορυφές' : 'Χρειάζονται τουλάχιστον 2 σημεία');
-    const name = askName(); if (name===null) return;
+    const name = await askName(); if (name===null) return;
     const pts = pend.pts; pend = null;
     mutate(()=>doc.shapes.push({ t:closed?'g':'p', pts, c:color, n:name }));
   }
 
   /* ---------- επεξεργασία ---------- */
-  function addSpot(x,y){
+  async function addSpot(x,y){
     let label = startLabel;
     if (!label){
-      label = lastLabel ? nextLabel(lastLabel) : (prompt('Όνομα πρώτης θέσης (π.χ. A1):','A1')||'').trim();
+      label = lastLabel ? nextLabel(lastLabel) : ((await ask('Όνομα πρώτης θέσης (π.χ. A1)','A1'))||'').trim();
       if (!label) return;
     }
     const have = spotKeys(); while (have.has(key(label))) label = nextLabel(label);
@@ -638,7 +656,7 @@ export function initMap(ctx){
       if (k==='spot'){ closeCtx(); return addSpot(x, y); }
       if (k==='rect' || k==='poly') return startPend(k, x, y);
       if (k==='pen'){ closeCtx(); tool = 'pen'; toast('Σύρε για να ζωγραφίσεις'); render(); return; }
-      if (k==='name'){ closeCtx(); const n = prompt('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος):', doc.shapes[i]?.n || ''); if (n!==null && n.trim()) mutate(()=>{ doc.shapes[i].n = n.trim(); }); return; }
+      if (k==='name'){ closeCtx(); const n = await ask('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος)', doc.shapes[i]?.n || ''); if (n!==null && n.trim()) mutate(()=>{ doc.shapes[i].n = n.trim(); }); return; }
       if (k==='del'){ closeCtx(); mutate(()=>doc.shapes.splice(i,1)); return; }
     }
     if (a==='cxcol'){ const i = +cmenu.dataset.i; color = b.dataset.c; closeCtx(); mutate(()=>{ doc.shapes[i].c = b.dataset.c; }); return; }
@@ -688,13 +706,13 @@ export function initMap(ctx){
     }
     if (a==='selmap'){ if (b.dataset.id===curId) return; if (editing) return toast('Πάτα πρώτα «Τέλος»'); closeSheet(); useMap(b.dataset.id); afterLoad = () => fitAll(); render(); return; }
     if (a==='newmap'){
-      const name = (prompt('Όνομα νέου χάρτη (π.χ. Υπόγειο, Πάρκινγκ 2):', 'Χάρτης '+(maps.length+1))||'').trim(); if (!name) return;
+      const name = ((await ask('Όνομα νέου χάρτη (π.χ. Υπόγειο, Πάρκινγκ 2)', 'Χάρτης '+(maps.length+1)))||'').trim(); if (!name) return;
       const id = 'm'+Date.now().toString(36); maps = [...maps, { id, name }];
       try { await store.setMaps(maps); } catch(err){ maps = maps.filter(m=>m.id!==id); return toast('Σφάλμα: '+err.message); }
       closeSheet(); useMap(id); afterLoad = () => fitAll(); toast('Ο χάρτης «'+name+'» δημιουργήθηκε — ανέβασε εικόνα'); render(); return;
     }
     if (a==='renamemap'){
-      const m = curMap(); if (!m) return; const name = (prompt('Νέο όνομα χάρτη:', m.name)||'').trim(); if (!name) return;
+      const m = curMap(); if (!m) return; const name = ((await ask('Νέο όνομα χάρτη', m.name))||'').trim(); if (!name) return;
       maps = maps.map(x => x.id===m.id ? { ...x, name } : x); try { await store.setMaps(maps); } catch(err){ return toast('Σφάλμα: '+err.message); } render(); return;
     }
     if (a==='clearmap'){
@@ -706,7 +724,7 @@ export function initMap(ctx){
       closeSheet(); renderAll(); onChange?.(); toast('Ο χάρτης διαγράφηκε'); return;
     }
     if (a==='zone'){ zoneFilter = b.dataset.z || null; fitZone(); render(); return; }
-    if (a==='newzone'){ const l = (prompt('Πρώτη θέση της νέας ζώνης/σειράς (π.χ. B1):', lastLabel?nextLabel(lastLabel.replace(/\d+$/,'0')):'B1')||'').trim(); if (l){ startLabel = l; toast('Πάτα στον χάρτη για να μπει η '+l); renderFoot(); } return; }
+    if (a==='newzone'){ const l = ((await ask('Πρώτη θέση της νέας ζώνης/σειράς (π.χ. B1)', lastLabel?nextLabel(lastLabel.replace(/\d+$/,'0')):'B1'))||'').trim(); if (l){ startLabel = l; toast('Πάτα στον χάρτη για να μπει η '+l); renderFoot(); } return; }
     if (a==='undo'){ while (undo.length && undo[undo.length-1]===null) undo.pop(); const prev = undo.pop(); if (prev){ const o = JSON.parse(prev); doc.list = o.list; doc.shapes = o.shapes; scheduleSave(); closeSheet(); } return; }
     if (a==='rename'){ const v = $('#mpLab').value.trim(); if (!v) return; const dup = doc.list.some((p,i)=>i!==selected && key(p.l)===key(v)); if (dup) return toast('Υπάρχει ήδη θέση '+v); mutate(()=>{ doc.list[selected].l = v; }); lastLabel = v; closeSheet(); return; }
     if (a==='del'){ mutate(()=>{ doc.list.splice(selected,1); }); closeSheet(); return; }
