@@ -58,6 +58,20 @@ const CSS = `
 .mp-foot input[type=range]{width:120px;padding:0}
 .mp-sheet input{font-size:18px;font-weight:700;padding:10px;width:120px}
 .mp-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+#cropDlg{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;border-radius:0;padding:0;background:#0b1220;color:#fff;overflow:hidden}
+#cropDlg[open]{display:flex;flex-direction:column}
+#cropDlg::backdrop{background:#000}
+.cr-head{padding:12px 14px;font-weight:700;font-size:16px;flex:none}
+.cr-head small{display:block;font-weight:500;font-size:12px;color:#94a3b8;margin-top:2px}
+.cr-area{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px}
+.cr-box{position:relative;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.cr-img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
+.cr-rect{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.6);cursor:move;touch-action:none}
+.cr-rect i{position:absolute;width:30px;height:30px;background:#0ea5e9;border:3px solid #fff;border-radius:50%;box-sizing:border-box}
+.cr-rect i[data-h=nw]{left:-15px;top:-15px}.cr-rect i[data-h=ne]{right:-15px;top:-15px}
+.cr-rect i[data-h=sw]{left:-15px;bottom:-15px}.cr-rect i[data-h=se]{right:-15px;bottom:-15px}
+.cr-foot{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
+.cr-foot .btn{flex:1}
 `;
 
 const MAXCHARS = 880000;           // όριο μεγέθους εικόνας (το έγγραφο Firestore δέχεται ~1MB)
@@ -74,6 +88,60 @@ async function compressImage(file){
     side = Math.round(side*0.8); q = Math.max(0.5, q-0.06);
   }
   throw new Error('Η εικόνα είναι πολύ μεγάλη, δοκίμασε μικρότερη.');
+}
+
+/* ---------- Περικοπή εικόνας μέσα στην εφαρμογή ---------- */
+// Επιστρέφει {x,y,w,h} ως κλάσματα (0..1) της εικόνας ή null αν ακυρωθεί.
+function cropDialog(url){
+  return new Promise(res => {
+    const d = document.createElement('dialog'); d.id = 'cropDlg';
+    d.innerHTML = `<div class="cr-head">Περικοπή εικόνας<small>Σύρε τις γωνίες ή μετακίνησε το πλαίσιο. Ό,τι είναι έξω από το πλαίσιο κόβεται.</small></div>
+      <div class="cr-area"><div class="cr-box"><img class="cr-img" alt=""><div class="cr-rect"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div></div></div>
+      <div class="cr-foot"><button class="btn" data-c="cancel">Άκυρο</button><button class="btn" data-c="all">Όλη η εικόνα</button><button class="btn primary" data-c="ok">Περικοπή ✓</button></div>`;
+    document.body.append(d);
+    const area = d.querySelector('.cr-area'), box = d.querySelector('.cr-box'), im = d.querySelector('.cr-img'), rc = d.querySelector('.cr-rect');
+    let r = { x:.08, y:.08, w:.84, h:.84 }, drag = null, nat = null;
+    const MIN = .08, clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+    const paint = () => { rc.style.left = r.x*100+'%'; rc.style.top = r.y*100+'%'; rc.style.width = r.w*100+'%'; rc.style.height = r.h*100+'%'; };
+    const fit = () => {
+      if (!nat) return; const aw = area.clientWidth-16, ah = area.clientHeight-16, sc = Math.min(aw/nat.w, ah/nat.h);
+      box.style.width = Math.round(nat.w*sc)+'px'; box.style.height = Math.round(nat.h*sc)+'px';
+    };
+    const done = v => { window.removeEventListener('resize', fit); d.close(); d.remove(); res(v); };
+    im.onload = () => { nat = { w:im.naturalWidth, h:im.naturalHeight }; fit(); paint(); };
+    im.src = url;
+    window.addEventListener('resize', fit);
+    d.addEventListener('cancel', e => { e.preventDefault(); done(null); });
+    d.addEventListener('click', e => { const c = e.target.closest('[data-c]')?.dataset.c; if (!c) return; done(c==='cancel' ? null : c==='all' ? { x:0, y:0, w:1, h:1 } : { ...r }); });
+    rc.addEventListener('pointerdown', e => {
+      rc.setPointerCapture(e.pointerId); const b = box.getBoundingClientRect();
+      drag = { h: e.target.dataset?.h || 'move', sx:e.clientX, sy:e.clientY, r:{ ...r }, bw:b.width, bh:b.height };
+    });
+    rc.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const dx = (e.clientX-drag.sx)/drag.bw, dy = (e.clientY-drag.sy)/drag.bh, o = drag.r;
+      if (drag.h==='move'){ r.x = clamp(o.x+dx, 0, 1-o.w); r.y = clamp(o.y+dy, 0, 1-o.h); }
+      else {
+        let x0 = o.x, y0 = o.y, x1 = o.x+o.w, y1 = o.y+o.h;
+        if (drag.h.includes('w')) x0 = clamp(o.x+dx, 0, x1-MIN); else x1 = clamp(o.x+o.w+dx, x0+MIN, 1);
+        if (drag.h.includes('n')) y0 = clamp(o.y+dy, 0, y1-MIN); else y1 = clamp(o.y+o.h+dy, y0+MIN, 1);
+        r = { x:x0, y:y0, w:x1-x0, h:y1-y0 };
+      }
+      paint();
+    });
+    const end = () => { drag = null; }; rc.addEventListener('pointerup', end); rc.addEventListener('pointercancel', end);
+    d.showModal();
+  });
+}
+// Κόβει μια εικόνα (Blob ή data URL) στο πλαίσιο r και επιστρέφει canvas
+async function cropToCanvas(src, r){
+  const blob = typeof src==='string' ? await (await fetch(src)).blob() : src;
+  const bmp = await createImageBitmap(blob);
+  const sx = Math.round(r.x*bmp.width), sy = Math.round(r.y*bmp.height);
+  const sw = Math.max(1, Math.round(r.w*bmp.width)), sh = Math.max(1, Math.round(r.h*bmp.height));
+  const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+  c.getContext('2d').drawImage(bmp, sx, sy, sw, sh, 0, 0, sw, sh);
+  return c;
 }
 
 export function zoneOf(label){ return String(label||'').replace(/\d+.*$/,'').replace(/[^A-Za-zΑ-Ωα-ω]/g,'').toUpperCase() || '—'; }
@@ -337,6 +405,30 @@ export function initMap(ctx){
     if (a==='tool'){ tool = b.dataset.t; startLabel = null; closeSheet(); return; }
     if (a==='color'){ color = b.dataset.c; renderFoot(); return; }
     if (a==='pickimg' || a==='img') return fileEl.click();
+    if (a==='cropimg'){
+      if (!mapImg) return;
+      const r = await cropDialog(mapImg.image); if (!r || (r.x===0 && r.y===0 && r.w===1 && r.h===1)) return;
+      if (doc.list.length && !confirm('Οι θέσεις και τα σχέδια θα μετακινηθούν ώστε να μείνουν στα ίδια σημεία της εικόνας. Όσα μένουν έξω από την περικοπή θα σβηστούν. Συνέχεια;')) return;
+      try {
+        toast('Περικοπή…'); const o = await compressImage(await cropToCanvas(mapImg.image, r));
+        const X = v => (v/100 - r.x)/r.w*100, Y = v => (v/100 - r.y)/r.h*100, inside = (x,y) => x>=0 && x<=100 && y>=0 && y<=100;
+        const list = doc.list.map(p => ({ ...p, x:+X(p.x).toFixed(2), y:+Y(p.y).toFixed(2) })).filter(p => inside(p.x,p.y));
+        const shapes = [];
+        for (const sh of doc.shapes){
+          if (sh.t==='r'){
+            const x0 = Math.max(0, X(sh.x)), y0 = Math.max(0, Y(sh.y)), x1 = Math.min(100, X(sh.x+sh.w)), y1 = Math.min(100, Y(sh.y+sh.h));
+            if (x1-x0 >= 0.8 && y1-y0 >= 0.8) shapes.push({ ...sh, x:+x0.toFixed(2), y:+y0.toFixed(2), w:+(x1-x0).toFixed(2), h:+(y1-y0).toFixed(2) });
+          } else if (sh.t==='p' && Array.isArray(sh.pts)){
+            const pts = sh.pts.map(q => [ +X(q[0]).toFixed(2), +Y(q[1]).toFixed(2) ]);
+            if (pts.some(q => inside(q[0],q[1]))) shapes.push({ ...sh, pts });
+          }
+        }
+        clearTimeout(saveT); doc.list = list; doc.shapes = shapes; undo = [];
+        await Promise.all([ store.saveImage(curId, o), store.saveSpots(curId, { list, size:doc.size }), store.saveShapes(curId, { list:shapes }) ]);
+        closeSheet(); toast('Η εικόνα περικόπηκε'); setTimeout(()=>{ renderAll(); fitAll(); }, 150);
+      } catch(err){ toast('Σφάλμα περικοπής: '+err.message); }
+      return;
+    }
     if (a==='selmap'){ if (b.dataset.id===curId) return; if (editing) return toast('Πάτα πρώτα «Τέλος»'); closeSheet(); useMap(b.dataset.id); afterLoad = () => fitAll(); render(); return; }
     if (a==='newmap'){
       const name = (prompt('Όνομα νέου χάρτη (π.χ. Υπόγειο, Πάρκινγκ 2):', 'Χάρτης '+(maps.length+1))||'').trim(); if (!name) return;
@@ -371,7 +463,8 @@ export function initMap(ctx){
   fileEl.addEventListener('change', async e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f || !curId) return;
     if (mapImg && doc.list.length && !confirm('Αν αλλάξεις εικόνα, οι θέσεις μένουν στα ίδια σημεία. Συνέχεια;')) return;
-    try { toast('Επεξεργασία εικόνας…'); const o = await compressImage(f); await store.saveImage(curId, o); editing = true; mode='browse'; toast('Η εικόνα αποθηκεύτηκε'); setTimeout(()=>{ renderAll(); fitAll(); }, 150); }
+    const url = URL.createObjectURL(f); const r = await cropDialog(url); URL.revokeObjectURL(url); if (!r) return;
+    try { toast('Επεξεργασία εικόνας…'); const full = r.x===0 && r.y===0 && r.w===1 && r.h===1; const o = await compressImage(full ? f : await cropToCanvas(f, r)); await store.saveImage(curId, o); editing = true; mode='browse'; toast('Η εικόνα αποθηκεύτηκε'); setTimeout(()=>{ renderAll(); fitAll(); }, 150); }
     catch(err){ toast('Σφάλμα εικόνας: '+err.message); }
   });
   img.addEventListener('load', () => { layout(); if (dlg.open) fitAll(); });
@@ -409,7 +502,7 @@ export function initMap(ctx){
       foot.innerHTML = `<div class="hint">${HINT}</div>
         <div class="mp-tools">${TOOLS.map(([t,i,n])=>`<button class="mp-tool ${tool===t?'on':''}" data-a="tool" data-t="${t}">${i} ${n}</button>`).join('')}</div>
         ${(tool==='rect'||tool==='pen') ? `<div class="mp-tools">${COLORS.map(c=>`<button class="mp-sw ${c===color?'on':''}" data-a="color" data-c="${c}" style="background:${c}" aria-label="χρώμα"></button>`).join('')}</div>` : ''}
-        ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
+        ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
         <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
         <button class="btn primary" data-a="done" style="margin-left:auto">Τέλος</button>`;
     } else if (mode==='pick'){
