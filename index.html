@@ -160,7 +160,7 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=27';
+import { initMap } from './map.js?v=28';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
@@ -209,6 +209,7 @@ if (LIVE) {
       const u3 = fs.onSnapshot(fs.doc(db,'maps',n.shapes), s => { shapes = s.exists() ? s.data() : null; emit(); });
       return () => { u1(); u2(); u3(); };
     },
+    subscribeShapes(id, cb){ return fs.onSnapshot(fs.doc(db,'maps',mapDocNames(id).shapes), s => cb(s.exists() ? (s.data().list||[]) : [])); },
     subscribeSpots(id, cb){ return fs.onSnapshot(fs.doc(db,'maps',mapDocNames(id).spots), s => cb(s.exists() ? (s.data().list||[]) : [])); },
     async saveImage(id,o){ await fs.setDoc(fs.doc(db,'maps',mapDocNames(id).img),    { ...o, updatedAt: Date.now() }); },
     async saveSpots(id,o){ await fs.setDoc(fs.doc(db,'maps',mapDocNames(id).spots),  { ...o, updatedAt: Date.now() }); },
@@ -234,6 +235,11 @@ if (LIVE) {
     subscribeMap(id, cb){
       const n = mapDocNames(id), rd = k => { try{return JSON.parse(localStorage.getItem('parking-map-'+k))}catch{return null} };
       const emit=()=>cb({ img:rd(n.img), spots:rd(n.spots), shapes:rd(n.shapes) });
+      mapSubs.add(emit); emit(); return ()=>mapSubs.delete(emit);
+    },
+    subscribeShapes(id, cb){
+      const n = mapDocNames(id);
+      const emit=()=>{ let s=null; try{s=JSON.parse(localStorage.getItem('parking-map-'+n.shapes))}catch{} cb((s&&s.list)||[]); };
       mapSubs.add(emit); emit(); return ()=>mapSubs.delete(emit);
     },
     subscribeSpots(id, cb){

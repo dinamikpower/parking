@@ -359,7 +359,7 @@ export function initMap(ctx){
   let s = 1, tx = 0, ty = 0, baseW = 0, baseH = 0, saveT = null;
   // πολλοί χάρτες
   let holdRemoteUntil = 0;   // μετά το «Τέλος» αγνοούμε για λίγο παλιές απαντήσεις της βάσης
-  let maps = [], curId = null, subbedId, allSpots = {}, unsubMap = null, unsubSpots = {}, loaded = false, afterLoad = null;
+  let maps = [], curId = null, subbedId, allSpots = {}, allShapes = {}, unsubShapes = {}, unsubMap = null, unsubSpots = {}, loaded = false, afterLoad = null;
   try { curId = localStorage.getItem('parking-map-cur') || null; } catch {}
   const curMap = () => maps.find(m => m.id===curId);
   const isLive = () => curMap()?.type==='live';
@@ -431,7 +431,9 @@ export function initMap(ctx){
     if (want !== subbedId) useMap(want);
     // οι θέσεις όλων των χαρτών (μικρά έγγραφα) για το κουμπί «Στον χάρτη»
     for (const m of maps) if (!unsubSpots[m.id]) unsubSpots[m.id] = store.subscribeSpots(m.id, l => { allSpots[m.id] = l; onChange?.(); });
+    for (const m of maps) if (!unsubShapes[m.id]) unsubShapes[m.id] = store.subscribeShapes(m.id, l => { allShapes[m.id] = decShapes(l); onChange?.(); });
     for (const id of Object.keys(unsubSpots)) if (!maps.some(m => m.id===id)){ unsubSpots[id](); delete unsubSpots[id]; delete allSpots[id]; }
+    for (const id of Object.keys(unsubShapes)) if (!maps.some(m => m.id===id)){ unsubShapes[id](); delete unsubShapes[id]; delete allShapes[id]; }
     if (dlg.open) render();
     onChange?.();
   });
@@ -939,7 +941,7 @@ export function initMap(ctx){
   function findMapFor(label, mapId){
     if (mapId && maps.some(m => m.id===mapId)) return mapId;
     if (label){
-      const k = key(label), has = id => (allSpots[id]||[]).some(p => key(p.l)===k);
+      const k = key(label), has = id => (allSpots[id]||[]).some(p => key(p.l)===k) || (allShapes[id]||[]).some(s => s.n && key(s.n)===k);
       if (curId && has(curId)) return curId;
       const m = maps.find(m => has(m.id)); if (m) return m.id;
     }
@@ -960,7 +962,7 @@ export function initMap(ctx){
         if (focusKey){
           const i = doc.list.findIndex(p => key(p.l)===focusKey);
           if (i>=0){ const p = doc.list[i]; l.flyTo(p.y, p.x, 20); selected = i; l.setTarget({ lat:p.y, lng:p.x }); renderSheet(); render(); }
-          else toast('Η θέση δεν υπάρχει στον χάρτη');
+          else { const sh = doc.shapes.find(s => s.n && key(s.n)===focusKey); if (sh){ l.fit([], [sh]); toast('📍 '+sh.n); } else toast('Η θέση δεν υπάρχει στον χάρτη'); }
         } else if (!l.fit(doc.list, doc.shapes)) l.centerOnceWhenKnown(18);
         return;
       }
@@ -968,12 +970,16 @@ export function initMap(ctx){
       if (focusKey){
         const i = doc.list.findIndex(p => key(p.l)===focusKey);
         if (i>=0){ const p = doc.list[i]; fitBox(p.x,p.y,p.x,p.y,3.5); selected = i; renderSheet(); render(); }
-        else toast('Η θέση δεν υπάρχει στον χάρτη');
+        else {
+          const sh = doc.shapes.find(s => s.n && key(s.n)===focusKey);
+          if (sh){ const q = sh.t==='r' ? [[sh.x,sh.y],[sh.x+sh.w,sh.y+sh.h]] : (sh.pts||[]); fitBox(Math.min(...q.map(p=>p[0])), Math.min(...q.map(p=>p[1])), Math.max(...q.map(p=>p[0])), Math.max(...q.map(p=>p[1])), 6); toast('📍 '+sh.n); }
+          else toast('Η θέση δεν υπάρχει στον χάρτη');
+        }
       }
     };
     if (switched && !loaded) afterLoad = settle; else requestAnimationFrame(settle);
   }
   function close(){ if (dlg.open) dlg.close(); }
   function refresh(){ if (dlg.open){ renderAll(); } }
-  return { open, close, refresh, hasSpot: (label, mapId) => { if (!label) return false; const k = key(label), ids = mapId && allSpots[mapId] ? [mapId] : Object.keys(allSpots); return ids.some(id => allSpots[id].some(p => key(p.l)===k)); }, spotCount: () => remote.list.length };
+  return { open, close, refresh, hasSpot: (label, mapId) => { if (!label) return false; const k = key(label), ids = mapId && (allSpots[mapId]||allShapes[mapId]) ? [mapId] : Object.keys({...allSpots, ...allShapes}); return ids.some(id => (allSpots[id]||[]).some(p => key(p.l)===k) || (allShapes[id]||[]).some(s => s.n && key(s.n)===k)); }, spotCount: () => remote.list.length };
 }
