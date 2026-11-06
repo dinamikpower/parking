@@ -63,7 +63,15 @@ const CSS = `
 .mp-sheet .m{color:var(--muted);font-size:14px;margin-top:6px}
 .mp-foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mp-foot{transition:opacity .12s}
-#mapDlg.menuoff .mp-foot{display:none}
+#mapDlg.editing .mp-foot{position:absolute;left:0;right:0;bottom:0;z-index:5;box-shadow:0 -4px 14px rgba(0,0,0,.25);max-height:55%;overflow:auto}
+.mp-more{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mp-ctx{position:fixed;z-index:20;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.45);padding:6px;display:flex;flex-direction:column;gap:2px;min-width:190px}
+.mp-ctx[hidden]{display:none}
+.mp-ctx>button{background:none;border:0;color:var(--text);font-size:16px;text-align:left;padding:11px 12px;border-radius:10px}
+.mp-ctx>button:active{background:var(--line)}
+.mp-ctx .cx-t{font-size:13px;color:var(--muted);padding:6px 12px 2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mp-ctx .cx-sw{display:flex;gap:6px;flex-wrap:wrap;padding:6px 10px}
+.vtx{position:absolute;width:12px;height:12px;border:3px solid;border-radius:50%;background:#fff;transform:translate(-50%,-50%);pointer-events:none;box-sizing:border-box}
 .mp-fab{display:none;position:absolute;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:6;border:0;border-radius:999px;padding:12px 16px;font-size:15px;font-weight:700;background:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 #mapDlg.menuoff.editing .mp-fab{display:block}
 #mapDlg.drw .mp-foot{opacity:0;pointer-events:none}
@@ -311,6 +319,7 @@ export function initMap(ctx){
     <div class="mp-vp"><div class="mp-stage"><img class="mp-img" alt=""><div class="mp-shapes"></div><div class="mp-spots"></div></div><div class="mp-empty" hidden></div></div>
     <div class="mp-sheet" hidden></div>
     <div class="mp-foot"></div>
+    <div class="mp-ctx" hidden></div>
     <button class="mp-fab" data-a="menu">☰ Μενού</button>
     <input type="file" accept="image/*" hidden class="mp-file">`;
   document.body.append(dlg);
@@ -323,8 +332,8 @@ export function initMap(ctx){
   let remote = { list:[], size:3.2, lsize:2.4, shapes:[] }; // τελευταία κατάσταση από τη βάση
   let doc = { list:[], size:3.2, lsize:2.4, shapes:[] }; // τοπική κατάσταση (αλλάζει στην επεξεργασία)
   const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ffffff'];
-  let tool = 'spot', color = COLORS[4], drawing = null;   // εργαλείο: pan | spot | rect | pen | erase
-  let mode = 'browse', editing = false, pickCb = null, menuOff = false;
+  let tool = 'pan', color = COLORS[4], drawing = null, pend = null;   // tool: pan (κίνηση, προεπιλογή) | pen (ελεύθερο σχέδιο)· pend: σχήμα σε εξέλιξη {k:'rect'|'poly', pts}
+  let mode = 'browse', editing = false, pickCb = null, menuOff = false, fmore = false;
   let zoneFilter = null, focusKey = null, selected = null, startLabel = null, lastLabel = '', undo = [];
   let s = 1, tx = 0, ty = 0, baseW = 0, baseH = 0, saveT = null;
   // πολλοί χάρτες
@@ -412,7 +421,7 @@ export function initMap(ctx){
   const ptrs = new Map(); let moved = false, dragSpot = null, pinch = null;
   function pointPct(cx, cy){ const r = stage.getBoundingClientRect(); return { x:(cx-r.left)/r.width*100, y:(cy-r.top)/r.height*100 }; }
   const clampPct = v => Math.max(0, Math.min(100, v));
-  const isDrawTool = () => editing && (tool==='rect' || tool==='pen');
+  const isDrawTool = () => editing && tool==='pen';
   const svgEl = () => shapesEl.querySelector('svg');
 
   /* σχεδίαση ορθογωνίων και ελεύθερου σχεδίου */
@@ -446,7 +455,7 @@ export function initMap(ctx){
     return n===null ? null : (n.trim() || def);
   }
   function drawEnd(){
-    const d = drawing; drawing = null; d.el?.remove();
+    const d = drawing; drawing = null; d.el?.remove(); tool = 'pan';
     if (d.type==='rect'){
       if (d.x1==null) return;
       const w = Math.abs(d.x1-d.x0), h = Math.abs(d.y1-d.y0);
@@ -463,13 +472,14 @@ export function initMap(ctx){
   }
 
   vp.addEventListener('pointerdown', e => {
+    if (!cmenu.hidden) closeCtx();
     if (e.target.closest('.mp-empty')) return;
     vp.setPointerCapture(e.pointerId);
     ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY, sx:e.clientX, sy:e.clientY, target:e.target });
     if (ptrs.size===1){
       moved = false; drawing = null; dragSpot = null;
       if (isDrawTool()) drawStart(e);
-      else { const sp = e.target.closest?.('.spot'); if (editing && sp && (tool==='spot' || tool==='pan')) dragSpot = +sp.dataset.i; }
+      else { const sp = e.target.closest?.('.spot'); if (editing && sp && !pend) dragSpot = +sp.dataset.i; }
     }
     if (ptrs.size===2){ moved = true; dragSpot = null; pinch = null; if (drawing){ drawing.el?.remove(); drawing = null; } }   // δύο δάχτυλα = zoom/μετακίνηση
   });
@@ -512,22 +522,56 @@ export function initMap(ctx){
       const sh = target.closest?.('[data-si]');
       if (sh){ const s = doc.shapes[+sh.dataset.si]; if (s?.n) return finishPick(s.n); return toast('Αυτή η περιοχή δεν έχει όνομα — δώσε της όνομα από την επεξεργασία χάρτη'); }
     }
-    if (editing && tool!=='erase' && !isDrawTool()){          // πάτημα πάνω στην ετικέτα μιας περιοχής → αλλαγή ονόματος
-      const lb = target.closest?.('.shp-l, .shp b');
-      const sh = lb && lb.closest('[data-si]');
-      if (sh){ const i = +sh.dataset.si, n = prompt('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος):', doc.shapes[i]?.n || ''); if (n!==null && n.trim()) mutate(()=>{ doc.shapes[i].n = n.trim(); }); return; }
-    }
     if (editing){
-      if (tool==='erase'){ const sh = target.closest?.('[data-si]'); if (sh){ const i = +sh.dataset.si; mutate(()=>doc.shapes.splice(i,1)); } return; }
-      if (tool==='pan'){ const sh = target.closest?.('[data-si]'); if (sh){ const i = +sh.dataset.si, n = prompt('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος):', doc.shapes[i]?.n || ''); if (n!==null && n.trim()) mutate(()=>{ doc.shapes[i].n = n.trim(); }); } return; }
-      if (tool==='spot'){
-        const q = pointPct(e.clientX, e.clientY);
-        if (q.x<0||q.x>100||q.y<0||q.y>100) return;
-        return addSpot(+q.x.toFixed(2), +q.y.toFixed(2));
-      }
-      return;
+      if (pend){ pendTap(e); return; }
+      const shEl = target.closest?.('[data-si]');
+      if (shEl) return shapeMenu(+shEl.dataset.si, e);
+      const q = pointPct(e.clientX, e.clientY);
+      if (q.x<0||q.x>100||q.y<0||q.y>100) return closeCtx();
+      return emptyMenu(+q.x.toFixed(2), +q.y.toFixed(2), e);
     }
     closeSheet();
+  }
+
+
+  /* ---------- μενού πάνω στον χάρτη (όπως στο ATAK): πάτημα σε σημείο → επιλογές ---------- */
+  const cmenu = dlg.querySelector('.mp-ctx');
+  function closeCtx(){ cmenu.hidden = true; cmenu.innerHTML = ''; }
+  function showCtx(html, e){
+    cmenu.innerHTML = html; cmenu.hidden = false;
+    const W = cmenu.offsetWidth, H = cmenu.offsetHeight, vw = innerWidth, vh = innerHeight;
+    cmenu.style.left = Math.max(8, Math.min(vw-W-8, e.clientX-W/2))+'px';
+    cmenu.style.top = Math.max(8, Math.min(vh-H-8, e.clientY+14 > vh-H-8 ? e.clientY-H-14 : e.clientY+14))+'px';
+  }
+  function emptyMenu(x, y, e){
+    cmenu.dataset.x = x; cmenu.dataset.y = y;
+    showCtx(`<button data-a="cx" data-k="spot">📍 Θέση εδώ</button><button data-a="cx" data-k="rect">▭ Ορθογώνιο</button><button data-a="cx" data-k="poly">⬠ Πολύγωνο / γραμμή</button><button data-a="cx" data-k="pen">✏️ Ελεύθερο σχέδιο</button>`, e);
+  }
+  function shapeMenu(i, e){
+    const sh = doc.shapes[i]; if (!sh) return;
+    cmenu.dataset.i = i;
+    showCtx(`<div class="cx-t">${esc(sh.n || 'Χωρίς όνομα')}</div><button data-a="cx" data-k="name">✎ Όνομα</button><div class="mp-tools cx-sw">${COLORS.map(c=>`<button class="mp-sw ${c===sh.c?'on':''}" data-a="cxcol" data-c="${c}" style="background:${c}" aria-label="χρώμα"></button>`).join('')}</div><button data-a="cx" data-k="del">🗑 Διαγραφή</button>`, e);
+  }
+  function startPend(k, x, y){
+    closeCtx(); pend = { k, pts:[[x,y]] };
+    toast(k==='rect' ? 'Πάτα την απέναντι γωνία' : 'Πάτα τις επόμενες κορυφές'); render();
+  }
+  function pendTap(e){
+    const q = pointPct(e.clientX, e.clientY), x = +clampPct(q.x).toFixed(2), y = +clampPct(q.y).toFixed(2);
+    if (pend.k==='rect'){
+      const [x0,y0] = pend.pts[0], w = Math.abs(x-x0), h = Math.abs(y-y0);
+      if (w<0.8 || h<0.8) return toast('Διάλεξε πιο μακρινό σημείο');
+      const name = askName(); if (name===null) return;
+      pend = null; mutate(()=>doc.shapes.push({ t:'r', x:+Math.min(x0,x).toFixed(2), y:+Math.min(y0,y).toFixed(2), w:+w.toFixed(2), h:+h.toFixed(2), c:color, n:name }));
+      return;
+    }
+    pend.pts.push([x,y]); render();
+  }
+  function finishPoly(closed){
+    if (!pend || pend.pts.length < (closed ? 3 : 2)) return toast(closed ? 'Χρειάζονται τουλάχιστον 3 κορυφές' : 'Χρειάζονται τουλάχιστον 2 σημεία');
+    const name = askName(); if (name===null) return;
+    const pts = pend.pts; pend = null;
+    mutate(()=>doc.shapes.push({ t:closed?'g':'p', pts, c:color, n:name }));
   }
 
   /* ---------- επεξεργασία ---------- */
@@ -588,6 +632,20 @@ export function initMap(ctx){
       catch(err){ toast('Σφάλμα αποθήκευσης: '+err.message); }
       remote = final; doc = cloneRemote(); editing = false; closeSheet(); renderAll(); return;
     }
+    if (a==='fmore'){ fmore = !fmore; renderFoot(); return; }
+    if (a==='cx'){
+      const k = b.dataset.k, x = +cmenu.dataset.x, y = +cmenu.dataset.y, i = +cmenu.dataset.i;
+      if (k==='spot'){ closeCtx(); return addSpot(x, y); }
+      if (k==='rect' || k==='poly') return startPend(k, x, y);
+      if (k==='pen'){ closeCtx(); tool = 'pen'; toast('Σύρε για να ζωγραφίσεις'); render(); return; }
+      if (k==='name'){ closeCtx(); const n = prompt('Όνομα περιοχής (π.χ. Ζώνη Α · VIP · Είσοδος):', doc.shapes[i]?.n || ''); if (n!==null && n.trim()) mutate(()=>{ doc.shapes[i].n = n.trim(); }); return; }
+      if (k==='del'){ closeCtx(); mutate(()=>doc.shapes.splice(i,1)); return; }
+    }
+    if (a==='cxcol'){ const i = +cmenu.dataset.i; color = b.dataset.c; closeCtx(); mutate(()=>{ doc.shapes[i].c = b.dataset.c; }); return; }
+    if (a==='pclose') return finishPoly(true);
+    if (a==='pline') return finishPoly(false);
+    if (a==='pundo'){ if (pend && pend.pts.length>1){ pend.pts.pop(); render(); } else { pend = null; render(); } return; }
+    if (a==='pcancel'){ pend = null; tool = 'pan'; render(); return; }
     if (a==='menu'){ menuOff = false; render(); return; }
     if (a==='tool'){ tool = b.dataset.t; startLabel = null; closeSheet(); menuOff = true; render(); return; }
     if (a==='color'){ color = b.dataset.c; renderFoot(); menuOff = true; render(); return; }
@@ -691,21 +749,18 @@ export function initMap(ctx){
   /* ---------- απόδοση ---------- */
   function renderFoot(){
     if (editing){
-      const HINT = {
-        pan:   'Σύρε για να κινήσεις τον χάρτη. Πάτα ένα σχήμα για να αλλάξεις το όνομά του. Με δύο δάχτυλα κάνεις zoom.',
-        spot:  startLabel ? `Πάτα στον χάρτη για να μπει η θέση <b>${esc(startLabel)}</b>` : 'Πάτα στον χάρτη για να βάλεις θέση (παίρνουν αυτόματα το επόμενο νούμερο). Σύρε μια θέση για να τη μετακινήσεις, πάτα πάνω της για μετονομασία ή διαγραφή.',
-        rect:  'Σύρε στον χάρτη για να ζωγραφίσεις ορθογώνιο (π.χ. μια ζώνη). Μετά μπορείς να του δώσεις όνομα. Με δύο δάχτυλα κάνεις zoom/μετακίνηση.',
-        pen:   'Σύρε ελεύθερα: η γραμμή ισιώνει αυτόματα και αν κλείσεις το σχήμα γίνεται περιοχή. Μετά του δίνεις όνομα.',
-        erase: 'Πάτα ένα σχήμα (ορθογώνιο, περιοχή ή γραμμή) για να το σβήσεις.',
-      }[tool];
-      const TOOLS = [['pan','✋','Κίνηση'],['spot','📍','Θέσεις'],['rect','▭','Ορθογώνιο'],['pen','✏️','Σχέδιο'],['erase','🗑','Σβήσιμο']];
-      foot.innerHTML = `<div class="hint">${HINT}</div>
-                <div class="mp-tools">${TOOLS.map(([t,i,n])=>`<button class="mp-tool ${tool===t?'on':''}" data-a="tool" data-t="${t}">${i} ${n}</button>`).join('')}</div>
-        ${(tool==='rect'||tool==='pen') ? `<div class="mp-tools">${COLORS.map(c=>`<button class="mp-sw ${c===color?'on':''}" data-a="color" data-c="${c}" style="background:${c}" aria-label="χρώμα"></button>`).join('')}</div>` : ''}
-        ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
+      if (pend || tool==='pen'){
+        const msg = tool==='pen' ? 'Σύρε στον χάρτη για να ζωγραφίσεις (η γραμμή ισιώνει μόνη της). Με δύο δάχτυλα κάνεις zoom.'
+          : pend.k==='rect' ? 'Πάτα την απέναντι γωνία του ορθογωνίου.'
+          : `Πάτα τις κορυφές (${pend.pts.length}). Κλείσε την περιοχή ή τελείωσε ως γραμμή.`;
+        foot.innerHTML = `<div class="hint">${msg}</div>${pend?.k==='poly' ? '<button class="btn primary" data-a="pclose">⬠ Κλείσιμο περιοχής</button><button class="btn" data-a="pline">〰 Γραμμή</button>' : ''}${pend ? '<button class="btn" data-a="pundo">↶ Πίσω</button>' : ''}<button class="btn" data-a="pcancel">✕ Ακύρωση</button>`;
+        return;
+      }
+      foot.innerHTML = `<div class="hint">Σύρε: κίνηση χάρτη · πάτα σε κενό σημείο: θέση/σχέδιο · πάτα σχήμα: όνομα, χρώμα, διαγραφή</div>
+        <button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="fmore">⚙ ${fmore ? 'Λιγότερα' : 'Ρυθμίσεις'}</button><button class="btn primary" data-a="done" style="margin-left:auto">Τέλος</button>
+        ${fmore ? `<div class="mp-more"><button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
         <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
-        <label>Μέγεθος ονομάτων <input class="mp-lsize" type="range" min="0.8" max="8" step="0.1" value="${doc.lsize||2.4}"></label>
-        <button class="btn primary" data-a="done" style="margin-left:auto">Τέλος</button>`;
+        <label>Μέγεθος ονομάτων <input class="mp-lsize" type="range" min="0.8" max="8" step="0.1" value="${doc.lsize||2.4}"></label></div>` : ''}`;
     } else if (mode==='pick'){
       foot.innerHTML = `<div class="hint">Πάτα μια ελεύθερη (πράσινη) θέση ή μια περιοχή που έχεις σχεδιάσει για να την επιλέξεις.</div>`;
     } else {
@@ -729,11 +784,17 @@ export function initMap(ctx){
         ? `<polygon points="${pts}" stroke="${c}" fill="${c}" fill-opacity=".22"/><polygon class="hit" data-si="${i}" points="${pts}"/>`
         : `<polyline points="${pts}" stroke="${c}"/><polyline class="hit" data-si="${i}" points="${pts}"/>`;
     }).join('');
-    shapesEl.innerHTML = rects + `<svg class="mp-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>` + labels;
+    let pv = '', dots = '';
+    if (pend){
+      if (pend.k==='poly' && pend.pts.length>1) pv = `<polyline points="${pend.pts.map(p=>p.join(',')).join(' ')}" stroke="${color}" stroke-dasharray="6 4"/>`;
+      dots = pend.pts.map(p=>`<div class="vtx" style="left:${p[0]}%;top:${p[1]}%;border-color:${color}"></div>`).join('');
+    }
+    shapesEl.innerHTML = rects + `<svg class="mp-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${lines}${pv}</svg>` + labels + dots;
   }
   function render(){
-    dlg.classList.toggle('erase', editing && (tool==='erase' || tool==='pan'));
-    dlg.classList.toggle('edt', editing && tool!=='erase' && tool!=='rect' && tool!=='pen');
+    if (!editing){ pend = null; tool = 'pan'; closeCtx(); }
+    dlg.classList.toggle('erase', editing && tool==='pan' && !pend);
+    dlg.classList.toggle('edt', editing && tool==='pan' && !pend);
     dlg.classList.toggle('editing', editing); if (!editing) menuOff = false; dlg.classList.toggle('menuoff', menuOff);
     dlg.classList.toggle('pickz', mode==='pick' && !editing);
     const occ = occupancy(), total = doc.list.length;
@@ -776,7 +837,7 @@ export function initMap(ctx){
     return curId;
   }
   function open(o = {}){
-    mode = o.mode || 'browse'; pickCb = o.onPick || null; editing = false; selected = null; zoneFilter = null; startLabel = null; undo = []; tool = 'spot'; drawing = null;
+    mode = o.mode || 'browse'; pickCb = o.onPick || null; editing = false; selected = null; zoneFilter = null; startLabel = null; undo = []; tool = 'pan'; pend = null; drawing = null;
     focusKey = o.focus ? key(o.focus) : null;
     const target = o.focus ? findMapFor(o.focus, o.mapId) : (o.mapId && maps.some(m => m.id===o.mapId) ? o.mapId : curId);
     const switched = target && target!==curId;
