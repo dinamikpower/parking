@@ -39,9 +39,9 @@ const CSS = `
 .mp-svg polyline.hit{stroke:transparent;stroke-width:24px}
 .mp-svg polygon{stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-width:2px}
 .mp-svg polygon.hit{fill:transparent;stroke:transparent;stroke-width:24px}
-.shp-l{position:absolute;transform:translate(-50%,-50%);font-size:calc(var(--lb,12px) * var(--lz,1));font-weight:700;color:#fff;background:rgba(0,0,0,.62);padding:.06em .5em;border-radius:.4em;line-height:1.3;white-space:nowrap;pointer-events:none}
+.shp-l{position:absolute;transform:translate(-50%,-50%);font-size:var(--lbe,var(--lb,12px));font-weight:700;color:#fff;background:rgba(0,0,0,.62);padding:.06em .5em;border-radius:.4em;line-height:1.3;white-space:nowrap;pointer-events:none}
 .shp{position:absolute;box-sizing:border-box;border:2px solid;border-radius:3px;pointer-events:none}
-.shp b{display:inline-block;font-size:calc(var(--lb,12px) * var(--lz,1));color:#fff;background:rgba(0,0,0,.6);padding:.06em .5em;border-radius:0 0 .4em 0;line-height:1.3;white-space:nowrap;overflow:hidden;max-width:100%}
+.shp b{display:inline-block;font-size:var(--lbe,var(--lb,12px));color:#fff;background:rgba(0,0,0,.6);padding:.06em .5em;border-radius:0 0 .4em 0;line-height:1.3;white-space:nowrap;overflow:hidden;max-width:100%}
 .shp.prev{border-style:dashed}
 #mapDlg.erase .shp{pointer-events:auto}
 #mapDlg.erase .mp-svg polyline.hit{pointer-events:stroke}
@@ -376,7 +376,9 @@ export function initMap(ctx){
   /* ---------- προβολή / zoom ---------- */
   const apply = () => {
     stage.style.transform = `translate(${tx}px,${ty}px) scale(${s})`;
-    stage.style.setProperty('--lz', Math.max(.12, Math.min(4, 1/s)).toFixed(3));   // ονόματα: μικρότερο zoom → μεγαλύτερα, μεγαλύτερο zoom → μικρότερα (σταθερό μέγεθος στην οθόνη)
+    // ονόματα: ελαφριά αντιστάθμιση του zoom (μακριά → σχετικά μεγαλύτερα) και ελάχιστο μέγεθος 14px στην οθόνη ώστε να διαβάζονται πάντα
+    const base = baseW*(doc.lsize||2.4)/100, f = Math.max(.3, Math.min(3, Math.pow(s, -.6)));
+    stage.style.setProperty('--lbe', Math.max(base*f, 14/s).toFixed(2)+'px');
   };
   function layout(){
     if (!mapImg) return;
@@ -385,6 +387,7 @@ export function initMap(ctx){
     stage.style.width = baseW+'px'; stage.style.height = baseH+'px';
     stage.style.setProperty('--sp', (baseW*doc.size/100)+'px');
     stage.style.setProperty('--lb', (baseW*(doc.lsize||2.4)/100)+'px');   // μέγεθος ονομάτων: ανάλογο του πλάτους του χάρτη
+    apply();
   }
   function fitAll(){ layout(); s = 1; tx = (vp.clientWidth-baseW)/2; ty = (vp.clientHeight-baseH)/2; apply(); }
   function fitBox(x0,y0,x1,y1,maxS=10){
