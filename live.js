@@ -8,20 +8,22 @@ const CSS = `
 .mp-live[hidden]{display:none}
 .mp-live .leaflet-container{background:#0b1220;font:inherit}
 .lv-ic{background:none;border:0}
-.lv-spot{transform:translate(-50%,-50%);display:inline-block;white-space:nowrap;font-size:var(--lvs,12px);font-weight:700;line-height:1;padding:4px 7px;border-radius:7px;border:2px solid #fff;color:#fff;box-shadow:0 1px 5px rgba(0,0,0,.6)}
-.lv-spot.free{background:#16a34a}.lv-spot.occ{background:#dc2626}
+.lv-spot{transform:translate(-50%,-50%);display:inline-block;white-space:nowrap;font-size:var(--lvs,12px);font-weight:800;line-height:1;padding:5px 8px;border-radius:9px;border:2px solid #fff;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.55);letter-spacing:.2px}
+.lv-spot.free{background:linear-gradient(135deg,#15803d,#22c55e)}.lv-spot.occ{background:linear-gradient(135deg,#b91c1c,#ef4444)}
 .lv-spot.dim{opacity:.35}
 .lv-spot.focus{outline:3px solid #facc15;outline-offset:2px}
-.lv-lab{background:rgba(0,0,0,.62);border:0;color:#fff;font-weight:700;font-size:var(--lvl,13px);padding:2px 8px;border-radius:7px;box-shadow:none}
+.lv-lab{background:rgba(11,27,58,.8);backdrop-filter:blur(3px);border:0;color:#fff;font-weight:700;font-size:var(--lvl,13px);padding:2px 8px;border-radius:7px;box-shadow:none}
 .lv-lab:before{display:none}
-.lv-dist{background:#f97316;color:#fff;border:0;font-weight:700;font-size:13px;padding:2px 8px;border-radius:7px}
+.lv-dist{background:linear-gradient(135deg,#ea580c,#fb923c);box-shadow:0 2px 8px rgba(0,0,0,.4);color:#fff;border:0;font-weight:700;font-size:13px;padding:2px 8px;border-radius:7px}
 .lv-dist:before{display:none}
 .lv-vtx{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #3b82f6;box-sizing:border-box;transform:translate(-50%,-50%)}
 .lv-me{width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 2px rgba(37,99,235,.5),0 1px 6px rgba(0,0,0,.6);transform:translate(-50%,-50%)}
 .lv-btns{display:flex;flex-direction:column;gap:8px}
 .lv-btns button{width:44px;height:44px;border-radius:12px;border:0;background:#fff;color:#111;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .lv-btns button.on{background:#2563eb;color:#fff}
-.mp-live .leaflet-control-attribution{font-size:10px}
+.mp-live .leaflet-control-attribution{font-size:10px;border-radius:8px 0 0 0}
+.mp-live .leaflet-bar{border:0!important;border-radius:14px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.mp-live .leaflet-bar a{width:42px;height:42px;line-height:42px;font-size:19px;border-bottom:1px solid #e2e8f0}
 `;
 
 let LP = null;

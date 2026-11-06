@@ -3,8 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0f172a">
+<meta name="theme-color" content="#0b1b3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Παρκινγκ">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Παρκινγκ</title>
 <style>
   :root{
@@ -89,13 +94,49 @@
   .scanout{min-height:48px;font-size:15px;color:var(--muted);margin-bottom:10px}
   .scanout b{color:var(--text);font-size:22px;letter-spacing:2px}
   .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 16px;border-radius:10px;z-index:50;font-size:15px}
+
+  /* ===== Ανανεωμένη εμφάνιση ===== */
+  :root{--grad:linear-gradient(135deg,#0b1b3a 0%,#123a7a 100%);--r:14px;--shadow:0 1px 2px rgba(15,23,42,.06),0 4px 14px rgba(15,23,42,.06)}
+  body{background:var(--bg);-webkit-font-smoothing:antialiased}
+  header{background:var(--grad);padding:calc(12px + env(safe-area-inset-top)) 14px 14px;border-radius:0 0 20px 20px;box-shadow:0 8px 24px rgba(2,8,23,.35)}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand svg{width:38px;height:38px;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.4)}
+  h1{font-size:20px;font-weight:800;letter-spacing:.2px;line-height:1.1}
+  h1 small{display:block;margin-top:3px;font-size:11px;font-weight:600;color:#9db7ec;letter-spacing:.7px;text-transform:uppercase}
+  .badge{background:rgba(255,255,255,.14);color:#e6eeff;backdrop-filter:blur(4px);font-weight:600}
+  .badge.live{background:rgba(34,197,94,.25);color:#bbf7d0}
+  .badge.demo{background:rgba(245,158,11,.28);color:#fde68a}
+  #q{border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.25);border:2px solid transparent;background:#fff}
+  .cam{background:linear-gradient(135deg,#2563eb,#3b82f6);box-shadow:0 3px 10px rgba(37,99,235,.55);border-radius:14px}
+  .tabs{margin:14px 14px 0;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:99px;box-shadow:var(--shadow);gap:2px}
+  .tab{border:0;background:transparent;border-radius:99px;padding:9px 8px;font-weight:700;font-size:14px;color:var(--muted)}
+  .tab.on{background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.45)}
+  .card{border:0;border-left:5px solid #94a3b8;border-radius:var(--r);box-shadow:var(--shadow)}
+  .card:has(.tag.in){border-left-color:var(--ok)}
+  .card.open{border-left-color:var(--accent);box-shadow:0 10px 28px rgba(37,99,235,.22)}
+  .card:has(.tag.in).open{border-left-color:var(--ok)}
+  .plate{position:relative;padding-left:27px;border-radius:7px;border-width:2px;overflow:hidden;background:linear-gradient(#fff,#f1f5f9);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .plate::before{content:"GR";position:absolute;left:0;top:0;bottom:0;width:19px;background:#1d4ed8;color:#fff;font-size:8px;font-weight:800;letter-spacing:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px}
+  .card.open .plate{padding-left:30px}
+  .card.open .plate::before{width:21px;font-size:9px}
+  .tag.in{background:rgba(22,163,74,.14);color:#15803d}
+  .tag.out{background:rgba(100,116,139,.16);color:#475569}
+  .btn{border-radius:12px}
+  .btn.primary,.fab{background:linear-gradient(135deg,#1d4ed8,#3b82f6)}
+  .fab{box-shadow:0 8px 24px rgba(37,99,235,.5);border-radius:99px}
+  .btn.go{background:linear-gradient(135deg,#15803d,#22c55e);border-color:transparent}
+  h3{font-size:12px;font-weight:800;letter-spacing:.8px}
+  dialog{border-radius:20px;box-shadow:0 24px 60px rgba(2,8,23,.45)}
+  .toast{border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:11px 18px}
+  @media (prefers-color-scheme: dark){ .plate{background:#fff} .tag.in{color:#4ade80} .tag.out{color:#cbd5e1} }
 </style>
 </head>
 <body>
 
 <header>
   <div class="top">
-    <h1>🅿️ Παρκινγκ</h1>
+    <div class="brand"><svg viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e3a8a"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bg)"/><path d="M256 450c-70-58-126-128-126-206 0-66 56-122 126-122s126 56 126 122c0 78-56 148-126 206z" fill="#fff"/><text x="256" y="262" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="190" fill="#1d4ed8">P</text></svg>
+      <h1>Παρκινγκ<small>Εντοπισμός οχημάτων</small></h1></div>
     <span style="display:flex;gap:6px;align-items:center">
       <span id="count" class="badge">0 μέσα</span>
       <span id="mode" class="badge demo" title="">demo</span>
@@ -169,7 +210,7 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=30';
+import { initMap } from './map.js?v=31';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
@@ -194,7 +235,7 @@ if (LIVE) {
   const fs = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
   const app = initializeApp(CFG);
   const db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) });
-  ({ requireLogin: window.__rl } = await import('./auth.js?v=1'));
+  ({ requireLogin: window.__rl } = await import('./auth.js?v=2'));
   ME = await window.__rl(app, db, fs, CFG);           // δεν προχωράει η εφαρμογή αν δεν γίνει είσοδος
   const col = fs.collection(db, 'vehicles');
   store = {

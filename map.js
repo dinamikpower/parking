@@ -2,7 +2,7 @@
    - Ανεβάζεις φωτογραφία ή σχέδιο του χώρου και βάζεις τις θέσεις με πάτημα.
    - Η ζώνη προκύπτει από τα γράμματα της ονομασίας (Α12 → ζώνη Α).
    - Ένα όχημα «κάθεται» σε θέση όταν το πεδίο Θέση της καταχώρησής του είναι ίδιο με την ονομασία της θέσης. */
-import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=4';
+import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=5';
 
 const CSS = `
 #mapDlg{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;border-radius:0;padding:0;background:var(--bg);color:var(--text);overflow:hidden}
@@ -114,6 +114,24 @@ const CSS = `
 .geo-map{flex:1;min-height:0;background:#1e293b}
 .geo-foot{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
 .geo-foot .btn{flex:1}
+
+/* ===== Ανανεωμένη εμφάνιση χάρτη ===== */
+.mp-head{background:linear-gradient(135deg,#0b1b3a,#123a7a);padding:calc(10px + env(safe-area-inset-top)) 12px 12px;box-shadow:0 6px 18px rgba(2,8,23,.35);position:relative;z-index:5}
+.mp-x{background:rgba(255,255,255,.14);border-radius:12px}
+.mp-title{font-size:17px;font-weight:800}
+.mp-m{border:0;background:rgba(255,255,255,.12);border-radius:99px;color:#e6eeff}
+.mp-m.on{background:linear-gradient(135deg,#0284c7,#38bdf8);color:#fff;box-shadow:0 2px 8px rgba(2,132,199,.5)}
+.mp-m.add{border:1px dashed rgba(255,255,255,.5);background:transparent}
+.mp-z{border:0;background:rgba(255,255,255,.1);color:#dbe7ff}
+.mp-z.on{background:linear-gradient(135deg,#1d4ed8,#3b82f6);box-shadow:0 2px 8px rgba(37,99,235,.5)}
+.mp-sheet,.mp-foot{border-top:0;border-radius:20px 20px 0 0;box-shadow:0 -8px 24px rgba(2,8,23,.22);position:relative;z-index:4}
+.mp-tool{border-radius:12px;border-width:1.5px}
+.mp-tool.on{background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-color:transparent}
+.spot{border:1.5px solid rgba(255,255,255,.92);box-shadow:0 1px 5px rgba(0,0,0,.45)}
+.shp-l,.shp b{background:rgba(11,27,58,.8)}
+.mp-ctx{border:0;border-radius:18px;box-shadow:0 14px 40px rgba(2,8,23,.5)}
+.mp-ask form{border:0;border-radius:20px;box-shadow:0 24px 60px rgba(2,8,23,.5)}
+.mp-fab{background:linear-gradient(135deg,#1d4ed8,#3b82f6)}
 `;
 
 const MAXCHARS = 880000;           // όριο μεγέθους εικόνας (το έγγραφο Firestore δέχεται ~1MB)

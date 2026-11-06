@@ -14,13 +14,15 @@ const ERR = {
 const msg = e => ERR[e?.code] || (e?.code === 'permission-denied' ? 'Δεν έχεις δικαίωμα.' : (e?.message || 'Σφάλμα'));
 
 const CSS = `
-#lg{position:fixed;inset:0;z-index:100;background:#0f172a;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
-#lg .box{width:min(380px,100%);background:#fff;color:#0f172a;border-radius:18px;padding:26px 22px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+#lg{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 20% 10%,#1d4ed8 0,#0b1b3a 55%,#070f24 100%);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+#lg .box{width:min(380px,100%);background:#fff;color:#0f172a;border-radius:22px;padding:30px 24px 24px;box-shadow:0 30px 70px rgba(0,0,0,.5);text-align:center}
+#lg .logo{width:76px;height:76px;border-radius:20px;box-shadow:0 8px 22px rgba(29,78,216,.45);margin:-62px auto 14px;display:block;background:#fff}
+#lg .box{margin-top:44px} #lg label,#lg input{text-align:left}
 #lg h1{margin:0 0 4px;font-size:26px} #lg p{margin:0 0 16px;color:#64748b;font-size:15px}
 #lg label{display:block;font-size:13px;font-weight:600;color:#64748b;margin:12px 0 4px}
 #lg input{width:100%;box-sizing:border-box;padding:13px;border-radius:10px;border:1px solid #cbd5e1;font:inherit;font-size:17px}
-#lg button{width:100%;margin-top:16px;padding:14px;border-radius:10px;border:0;background:#2563eb;color:#fff;font:inherit;font-weight:700;font-size:17px;cursor:pointer}
-#lg button.link{background:none;color:#2563eb;font-size:14px;font-weight:600;margin-top:10px;padding:8px}
+#lg button{width:100%;margin-top:16px;padding:14px;border-radius:12px;border:0;background:linear-gradient(135deg,#1d4ed8,#3b82f6);box-shadow:0 6px 16px rgba(37,99,235,.45);color:#fff;font:inherit;font-weight:700;font-size:17px;cursor:pointer}
+#lg button.link{background:none;box-shadow:none;color:#2563eb;font-size:14px;font-weight:600;margin-top:10px;padding:8px}
 #lg button:disabled{opacity:.6}
 #lg .err{color:#b91c1c;font-size:14px;min-height:20px;margin-top:10px} #lg .ok{color:#166534}
 #ud{border:0;border-radius:16px;padding:0;width:min(520px,94vw);background:var(--card,#fff);color:var(--text,#0f172a)}
@@ -32,7 +34,7 @@ const CSS = `
 #ud button.p{background:#2563eb;border-color:#2563eb;color:#fff} #ud button.d{color:#b91c1c}
 #ud input{width:100%;box-sizing:border-box;padding:11px;border-radius:10px;border:1px solid #cbd5e1;font:inherit;font-size:16px;margin-top:6px}
 #ud .row{display:flex;gap:8px;margin-top:12px} #ud .row>*{flex:1} #ud .m{min-height:20px;font-size:14px;margin-top:8px}
-#userBtn{background:#334155;color:#fff;border:0;border-radius:99px;padding:4px 10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#userBtn{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:99px;padding:4px 10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 `;
 
 export async function requireLogin(app, db, fs, CFG, onReady){
@@ -57,7 +59,7 @@ export async function requireLogin(app, db, fs, CFG, onReady){
   function loginScreen(initialErr){
     return new Promise(resolve => {
       const el = document.createElement('div'); el.id = 'lg';
-      el.innerHTML = `<form class="box" autocomplete="on"><h1>🅿️ Παρκινγκ</h1><p>Είσοδος προσωπικού</p>
+      el.innerHTML = `<form class="box" autocomplete="on"><img class="logo" alt="" src="icon-192.png"><h1>Παρκινγκ</h1><p>Είσοδος προσωπικού</p>
         <label>Email</label><input name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" required>
         <label>Κωδικός</label><input name="password" type="password" autocomplete="current-password" required>
         <div class="err">${esc(initialErr || '')}</div>
@@ -80,7 +82,7 @@ export async function requireLogin(app, db, fs, CFG, onReady){
   function noAccess(user){
     return new Promise(() => {
       const el = document.createElement('div'); el.id = 'lg';
-      el.innerHTML = `<div class="box"><h1>Χωρίς πρόσβαση</h1><p>Ο λογαριασμός <b>${esc(user.email)}</b> δεν έχει δικαίωμα χρήσης. Ζήτα από τον διαχειριστή να σε προσθέσει.</p>
+      el.innerHTML = `<div class="box"><img class="logo" alt="" src="icon-192.png"><h1>Χωρίς πρόσβαση</h1><p>Ο λογαριασμός <b>${esc(user.email)}</b> δεν έχει δικαίωμα χρήσης. Ζήτα από τον διαχειριστή να σε προσθέσει.</p>
         <button data-a="out">Αποσύνδεση</button></div>`;
       document.body.append(el); el.querySelector('[data-a=out]').onclick = async () => { await A.signOut(auth); location.reload(); };
     });
