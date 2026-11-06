@@ -262,6 +262,7 @@ export function initMap(ctx){
   let zoneFilter = null, focusKey = null, selected = null, startLabel = null, lastLabel = '', undo = [];
   let s = 1, tx = 0, ty = 0, baseW = 0, baseH = 0, saveT = null;
   // πολλοί χάρτες
+  let holdRemoteUntil = 0;   // μετά το «Τέλος» αγνοούμε για λίγο παλιές απαντήσεις της βάσης
   let maps = [], curId = null, subbedId, allSpots = {}, unsubMap = null, unsubSpots = {}, loaded = false, afterLoad = null;
   try { curId = localStorage.getItem('parking-map-cur') || null; } catch {}
   const curMap = () => maps.find(m => m.id===curId);
@@ -283,7 +284,7 @@ export function initMap(ctx){
     if (id) unsubMap = store.subscribeMap(id, ({ img:i, spots, shapes }) => {
       mapImg = i && i.image ? i : null;
       remote = { list: (spots?.list)||[], size: spots?.size||3.2, shapes: (shapes?.list)||[] };
-      if (!editing) doc = cloneRemote();
+      if (!editing && Date.now() > holdRemoteUntil) doc = cloneRemote();
       loaded = true;
       if (dlg.open){ render(); if (afterLoad){ const f = afterLoad; afterLoad = null; requestAnimationFrame(f); } }
       onChange?.();
@@ -300,7 +301,9 @@ export function initMap(ctx){
     if (dlg.open) render();
     onChange?.();
   });
-  const saveAll = () => curId ? Promise.all([ store.saveSpots(curId, { list:doc.list, size:doc.size }), store.saveShapes(curId, { list:doc.shapes }) ]) : Promise.resolve();
+  // Παίρνει πρώτα φωτογραφία της κατάστασης και μετά στέλνει: αλλιώς μια απάντηση της βάσης ανάμεσα στις δύο αποθηκεύσεις μπορούσε να αντικαταστήσει τα σχέδια
+  const saveAll = () => { if (!curId) return Promise.resolve(); const id = curId, list = doc.list, size = doc.size, shapes = doc.shapes;
+    return Promise.all([ store.saveSpots(id, { list, size }), store.saveShapes(id, { list:shapes }) ]); };
   function scheduleSave(){
     clearTimeout(saveT);
     saveT = setTimeout(()=>saveAll().catch(e=>toast('Σφάλμα αποθήκευσης: '+e.message)), 500);
@@ -483,10 +486,12 @@ export function initMap(ctx){
     if (a==='closesheet') return closeSheet();
     if (a==='edit'){ editing = true; mode = 'browse'; closeSheet(); renderAll(); return; }
     if (a==='done'){
-      editing = false; startLabel = null; undo = []; clearTimeout(saveT);
-      try { await saveAll(); remote = JSON.parse(JSON.stringify({ list:doc.list, size:doc.size, shapes:doc.shapes })); toast('Ο χάρτης αποθηκεύτηκε'); }
+      startLabel = null; undo = []; clearTimeout(saveT);
+      const final = JSON.parse(JSON.stringify({ list:doc.list, size:doc.size, shapes:doc.shapes }));
+      holdRemoteUntil = Date.now() + 2500;          // κράτα την τοπική εικόνα όσο φτάνουν οι απαντήσεις της βάσης
+      try { await saveAll(); toast('Ο χάρτης αποθηκεύτηκε'); }
       catch(err){ toast('Σφάλμα αποθήκευσης: '+err.message); }
-      doc = cloneRemote(); closeSheet(); renderAll(); return;
+      remote = final; doc = cloneRemote(); editing = false; closeSheet(); renderAll(); return;
     }
     if (a==='tool'){ tool = b.dataset.t; startLabel = null; closeSheet(); return; }
     if (a==='color'){ color = b.dataset.c; renderFoot(); return; }
