@@ -39,9 +39,9 @@ const CSS = `
 .mp-svg polyline.hit{stroke:transparent;stroke-width:24px}
 .mp-svg polygon{stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-width:4px}
 .mp-svg polygon.hit{fill:transparent;stroke:transparent;stroke-width:24px}
-.shp-l{position:absolute;transform:translate(-50%,-50%);font-size:max(11px,calc(var(--sp)*.5));font-weight:700;color:#fff;background:rgba(0,0,0,.62);padding:1px 8px;border-radius:6px;line-height:1.3;white-space:nowrap;pointer-events:none}
+.shp-l{position:absolute;transform:translate(-50%,-50%);font-size:var(--lb,12px);font-weight:700;color:#fff;background:rgba(0,0,0,.62);padding:.06em .5em;border-radius:.4em;line-height:1.3;white-space:nowrap;pointer-events:none}
 .shp{position:absolute;box-sizing:border-box;border:3px solid;border-radius:4px;pointer-events:none}
-.shp b{display:inline-block;font-size:max(11px,calc(var(--sp)*.5));color:#fff;background:rgba(0,0,0,.6);padding:1px 7px;border-radius:0 0 6px 0;line-height:1.3;white-space:nowrap;overflow:hidden;max-width:100%}
+.shp b{display:inline-block;font-size:var(--lb,12px);color:#fff;background:rgba(0,0,0,.6);padding:.06em .5em;border-radius:0 0 .4em 0;line-height:1.3;white-space:nowrap;overflow:hidden;max-width:100%}
 .shp.prev{border-style:dashed}
 #mapDlg.erase .shp{pointer-events:auto}
 #mapDlg.erase .mp-svg polyline.hit{pointer-events:stroke}
@@ -301,8 +301,8 @@ export function initMap(ctx){
 
   /* ---------- κατάσταση ---------- */
   let mapImg = null;                          // {image,w,h}
-  let remote = { list:[], size:3.2, shapes:[] }; // τελευταία κατάσταση από τη βάση
-  let doc = { list:[], size:3.2, shapes:[] }; // τοπική κατάσταση (αλλάζει στην επεξεργασία)
+  let remote = { list:[], size:3.2, lsize:2.4, shapes:[] }; // τελευταία κατάσταση από τη βάση
+  let doc = { list:[], size:3.2, lsize:2.4, shapes:[] }; // τοπική κατάσταση (αλλάζει στην επεξεργασία)
   const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ffffff'];
   let tool = 'spot', color = COLORS[4], drawing = null;   // εργαλείο: pan | spot | rect | pen | erase
   let mode = 'browse', editing = false, pickCb = null;
@@ -323,14 +323,14 @@ export function initMap(ctx){
   }
 
   /* ---------- δεδομένα ---------- */
-  const cloneRemote = () => ({ list: remote.list.map(p=>({...p})), size: remote.size, shapes: JSON.parse(JSON.stringify(remote.shapes)) });
+  const cloneRemote = () => ({ list: remote.list.map(p=>({...p})), size: remote.size, lsize: remote.lsize, shapes: JSON.parse(JSON.stringify(remote.shapes)) });
   function useMap(id){
     subbedId = id; curId = id; try { id ? localStorage.setItem('parking-map-cur', id) : localStorage.removeItem('parking-map-cur'); } catch {}
     unsubMap?.(); unsubMap = null; loaded = !id;
-    mapImg = null; remote = { list:[], size:3.2, shapes:[] }; doc = cloneRemote(); zoneFilter = null; selected = null;
+    mapImg = null; remote = { list:[], size:3.2, lsize:2.4, shapes:[] }; doc = cloneRemote(); zoneFilter = null; selected = null;
     if (id) unsubMap = store.subscribeMap(id, ({ img:i, spots, shapes }) => {
       mapImg = i && i.image ? i : null;
-      remote = { list: (spots?.list)||[], size: spots?.size||3.2, shapes: (shapes?.list)||[] };
+      remote = { list: (spots?.list)||[], size: spots?.size||3.2, lsize: spots?.lsize||2.4, shapes: (shapes?.list)||[] };
       if (!editing && Date.now() > holdRemoteUntil) doc = cloneRemote();
       loaded = true;
       if (dlg.open){ render(); if (afterLoad){ const f = afterLoad; afterLoad = null; requestAnimationFrame(f); } }
@@ -349,8 +349,8 @@ export function initMap(ctx){
     onChange?.();
   });
   // Παίρνει πρώτα φωτογραφία της κατάστασης και μετά στέλνει: αλλιώς μια απάντηση της βάσης ανάμεσα στις δύο αποθηκεύσεις μπορούσε να αντικαταστήσει τα σχέδια
-  const saveAll = () => { if (!curId) return Promise.resolve(); const id = curId, list = doc.list, size = doc.size, shapes = doc.shapes;
-    return Promise.all([ store.saveSpots(id, { list, size }), store.saveShapes(id, { list:shapes }) ]); };
+  const saveAll = () => { if (!curId) return Promise.resolve(); const id = curId, list = doc.list, size = doc.size, lsize = doc.lsize, shapes = doc.shapes;
+    return Promise.all([ store.saveSpots(id, { list, size, lsize }), store.saveShapes(id, { list:shapes }) ]); };
   function scheduleSave(){
     clearTimeout(saveT);
     saveT = setTimeout(()=>saveAll().catch(e=>toast('Σφάλμα αποθήκευσης: '+e.message)), 500);
@@ -366,6 +366,7 @@ export function initMap(ctx){
     baseW = Math.min(vw, vh*asp); baseH = baseW/asp;
     stage.style.width = baseW+'px'; stage.style.height = baseH+'px';
     stage.style.setProperty('--sp', (baseW*doc.size/100)+'px');
+    stage.style.setProperty('--lb', (baseW*(doc.lsize||2.4)/100)+'px');   // μέγεθος ονομάτων: ανάλογο του πλάτους του χάρτη
   }
   function fitAll(){ layout(); s = 1; tx = (vp.clientWidth-baseW)/2; ty = (vp.clientHeight-baseH)/2; apply(); }
   function fitBox(x0,y0,x1,y1,maxS=10){
@@ -544,7 +545,7 @@ export function initMap(ctx){
     if (a==='edit'){ editing = true; mode = 'browse'; closeSheet(); renderAll(); return; }
     if (a==='done'){
       startLabel = null; undo = []; clearTimeout(saveT);
-      const final = JSON.parse(JSON.stringify({ list:doc.list, size:doc.size, shapes:doc.shapes }));
+      const final = JSON.parse(JSON.stringify({ list:doc.list, size:doc.size, lsize:doc.lsize, shapes:doc.shapes }));
       holdRemoteUntil = Date.now() + 2500;          // κράτα την τοπική εικόνα όσο φτάνουν οι απαντήσεις της βάσης
       try { await saveAll(); toast('Ο χάρτης αποθηκεύτηκε'); }
       catch(err){ toast('Σφάλμα αποθήκευσης: '+err.message); }
@@ -584,7 +585,7 @@ export function initMap(ctx){
           }
         }
         clearTimeout(saveT); doc.list = list; doc.shapes = shapes; undo = [];
-        await Promise.all([ store.saveImage(curId, o), store.saveSpots(curId, { list, size:doc.size }), store.saveShapes(curId, { list:shapes }) ]);
+        await Promise.all([ store.saveImage(curId, o), store.saveSpots(curId, { list, size:doc.size, lsize:doc.lsize }), store.saveShapes(curId, { list:shapes }) ]);
         closeSheet(); toast('Η εικόνα περικόπηκε'); setTimeout(()=>{ renderAll(); fitAll(); }, 150);
       } catch(err){ toast('Σφάλμα περικοπής: '+err.message); }
       return;
@@ -619,6 +620,7 @@ export function initMap(ctx){
   });
   dlg.addEventListener('input', e => {
     if (e.target.matches('.mp-size')){ doc.size = +e.target.value; layout(); scheduleSave(); }
+    if (e.target.matches('.mp-lsize')){ doc.lsize = +e.target.value; layout(); scheduleSave(); }
   });
   fileEl.addEventListener('change', async e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f || !curId) return;
@@ -664,6 +666,7 @@ export function initMap(ctx){
         ${(tool==='rect'||tool==='pen') ? `<div class="mp-tools">${COLORS.map(c=>`<button class="mp-sw ${c===color?'on':''}" data-a="color" data-c="${c}" style="background:${c}" aria-label="χρώμα"></button>`).join('')}</div>` : ''}
         ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
         <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
+        <label>Μέγεθος ονομάτων <input class="mp-lsize" type="range" min="0.8" max="8" step="0.1" value="${doc.lsize||2.4}"></label>
         <button class="btn primary" data-a="done" style="margin-left:auto">Τέλος</button>`;
     } else if (mode==='pick'){
       foot.innerHTML = `<div class="hint">Πάτα μια ελεύθερη (πράσινη) θέση για να την επιλέξεις.</div>`;
