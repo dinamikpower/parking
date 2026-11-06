@@ -8,11 +8,11 @@ const CSS = `
 .mp-live[hidden]{display:none}
 .mp-live .leaflet-container{background:#0b1220;font:inherit}
 .lv-ic{background:none;border:0}
-.lv-spot{transform:translate(-50%,-50%);display:inline-block;white-space:nowrap;font-size:12px;font-weight:700;line-height:1;padding:4px 7px;border-radius:7px;border:2px solid #fff;color:#fff;box-shadow:0 1px 5px rgba(0,0,0,.6)}
+.lv-spot{transform:translate(-50%,-50%);display:inline-block;white-space:nowrap;font-size:var(--lvs,12px);font-weight:700;line-height:1;padding:4px 7px;border-radius:7px;border:2px solid #fff;color:#fff;box-shadow:0 1px 5px rgba(0,0,0,.6)}
 .lv-spot.free{background:#16a34a}.lv-spot.occ{background:#dc2626}
 .lv-spot.dim{opacity:.35}
 .lv-spot.focus{outline:3px solid #facc15;outline-offset:2px}
-.lv-lab{background:rgba(0,0,0,.62);border:0;color:#fff;font-weight:700;font-size:13px;padding:2px 8px;border-radius:7px;box-shadow:none}
+.lv-lab{background:rgba(0,0,0,.62);border:0;color:#fff;font-weight:700;font-size:var(--lvl,13px);padding:2px 8px;border-radius:7px;box-shadow:none}
 .lv-lab:before{display:none}
 .lv-dist{background:#f97316;color:#fff;border:0;font-weight:700;font-size:13px;padding:2px 8px;border-radius:7px}
 .lv-dist:before{display:none}
@@ -72,10 +72,15 @@ export async function createLive(host, h){
       if (!Array.isArray(sh.pts) || sh.pts.length < 2) return;
       const ll = sh.pts.map(p => [+p[1], +p[0]]), c = /^#[0-9a-f]{6}$/i.test(sh.c) ? sh.c : '#3b82f6';
       const lay = sh.t==='g' ? L.polygon(ll, { color:c, weight:2, fillColor:c, fillOpacity:.22, bubblingMouseEvents:false })
-                             : L.polyline(ll, { color:c, weight:3, bubblingMouseEvents:false });
+                             : L.polyline(ll, { color:c, weight:2, bubblingMouseEvents:false });
       lay.on('click', e => { if (blockClick()) return; L.DomEvent.stop(e); h.onShape?.(i, evXY(e)); });
       if (sh.n) lay.bindTooltip(String(sh.n), { permanent:true, direction:'center', className:'lv-lab', interactive:false });
       lay.addTo(data); lay._si = i; setTimeout(() => { if (lay._path) lay._path.__si = i; }, 0);
+      if (sh.t!=='g'){                      // αόρατη, πιο χοντρή γραμμή ώστε να πατιέται εύκολα η λεπτή γραμμή
+        const hit = L.polyline(ll, { weight:22, opacity:0, bubblingMouseEvents:false }).addTo(data);
+        hit.on('click', e => { if (blockClick()) return; L.DomEvent.stop(e); h.onShape?.(i, evXY(e)); });
+        setTimeout(() => { if (hit._path) hit._path.__si = i; }, 0);
+      }
     });
     (d.spots||[]).forEach((p, i) => {
       const mk = L.marker([+p.y, +p.x], { icon:L.divIcon({ className:'lv-ic', iconSize:[0,0], html:`<div class="lv-spot ${p.cls||'free'}${p.dim?' dim':''}${p.focus?' focus':''}">${String(p.l).replace(/</g,'&lt;')}</div>` }), keyboard:false, bubblingMouseEvents:false });
@@ -115,7 +120,7 @@ export async function createLive(host, h){
   let pts = null, pl = null;
   box.addEventListener('pointerdown', e => {
     if (tool!=='pen' || e.target.closest('.leaflet-control')) return;
-    pts = [map.mouseEventToLatLng(e)]; box.setPointerCapture?.(e.pointerId);
+    pts = [map.mouseEventToLatLng(e)]; box.setPointerCapture?.(e.pointerId); h.onDraw?.(true);
   });
   box.addEventListener('pointermove', e => {
     if (!pts) return;
@@ -125,15 +130,11 @@ export async function createLive(host, h){
   });
   const endPen = () => {
     if (!pts) return;
-    const p = pts; pts = null; if (pl){ over.removeLayer(pl); pl = null; }
+    const p = pts; pts = null; if (pl){ over.removeLayer(pl); pl = null; } h.onDraw?.(false);
     if (p.length < 4) return;
-    const px = p.map(q => map.latLngToLayerPoint(q)), simp = L.LineUtil.simplify(px, 4);
-    const closed = simp.length > 3 && simp[0].distanceTo(simp[simp.length-1]) < 28;
-    const out = simp.map(q => { const ll = map.layerPointToLatLng(q); return [+ll.lng.toFixed(7), +ll.lat.toFixed(7)]; });
-    if (closed) out.pop();
-    h.onFreehand?.(out, closed);
+    h.onFreehand?.(p.map(q => [q.lng, q.lat]));
   };
-  box.addEventListener('pointerup', endPen); box.addEventListener('pointercancel', () => { pts = null; if (pl){ over.removeLayer(pl); pl = null; } });
+  box.addEventListener('pointerup', endPen); box.addEventListener('pointercancel', () => { if (pts) h.onDraw?.(false); pts = null; if (pl){ over.removeLayer(pl); pl = null; } });
 
   /* ---- η θέση μου και η απόσταση προς το όχημα ---- */
   function drawLine(){
@@ -161,6 +162,7 @@ export async function createLive(host, h){
   const api = {
     map,
     setData,
+    setSizes(spotPx, labelPx){ host.style.setProperty('--lvs', spotPx+'px'); host.style.setProperty('--lvl', labelPx+'px'); },
     setTool(t){ tool = t; if (t==='pen') map.dragging.disable(); else map.dragging.enable(); },
     setTarget(t){ target = t; drawLine(); },
     setRoute(coords){                     // coords: [[lat,lng],...] ή null

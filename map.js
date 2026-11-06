@@ -2,7 +2,7 @@
    - Ανεβάζεις φωτογραφία ή σχέδιο του χώρου και βάζεις τις θέσεις με πάτημα.
    - Η ζώνη προκύπτει από τα γράμματα της ονομασίας (Α12 → ζώνη Α).
    - Ένα όχημα «κάθεται» σε θέση όταν το πεδίο Θέση της καταχώρησής του είναι ίδιο με την ονομασία της θέσης. */
-import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=2';
+import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=3';
 
 const CSS = `
 #mapDlg{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;border-radius:0;padding:0;background:var(--bg);color:var(--text);overflow:hidden}
@@ -304,6 +304,18 @@ function beautify(pts, W, H){
   return { t:'p', pts: back(snap(s.map(r=>[...r]), false)) };
 }
 
+// Ομορφάδεμα ελεύθερου σχεδίου πάνω σε live χάρτη: μετατροπή lng/lat σε μέτρα, κοινός αλγόριθμος beautify, επιστροφή σε lng/lat
+function beautifyGeo(pts){
+  if (!pts || pts.length < 4) return null;
+  const lat0 = pts.reduce((a,p)=>a+p[1],0)/pts.length, kx = Math.cos(lat0*Math.PI/180)*111320, ky = 110540;
+  const M = pts.map(p => [p[0]*kx, p[1]*ky]), xs = M.map(q=>q[0]), ys = M.map(q=>q[1]);
+  const x0 = Math.min(...xs), y0 = Math.min(...ys), ext = Math.max(Math.max(...xs)-x0, Math.max(...ys)-y0) || 1, sc = 100/ext;
+  const o = beautify(M.map(q => [(q[0]-x0)*sc, (q[1]-y0)*sc]), 100, 100);
+  const ll = q => [ +((q[0]/sc + x0)/kx).toFixed(7), +((q[1]/sc + y0)/ky).toFixed(7) ];
+  if (o.t==='r') return { t:'g', pts:[[o.x,o.y],[o.x+o.w,o.y],[o.x+o.w,o.y+o.h],[o.x,o.y+o.h]].map(ll) };
+  return { t:o.t, pts:o.pts.map(ll) };
+}
+
 /* Το Firestore δεν δέχεται πίνακες μέσα σε πίνακες, οπότε οι γραμμές/περιοχές (pts) αποθηκεύονται επίπεδα [x0,y0,x1,y1,…] */
 const encShapes = list => list.map(sh => Array.isArray(sh.pts) ? { ...sh, pts: sh.pts.flat() } : sh);
 const decShapes = list => (list||[]).map(sh => {
@@ -375,7 +387,14 @@ export function initMap(ctx){
     onShape: (i, ev) => { const sh = doc.shapes[i]; if (mode==='pick' && !editing){ if (sh?.n) return finishPick(sh.n); return toast('Αυτή η περιοχή δεν έχει όνομα'); } if (editing) shapeMenu(i, ev); },
     onMap: ll => { closeCtx(); if (moving!=null) return moveTo(ll); if (editing && pend) return pendAdd(ll.lng, ll.lat); if (selected!=null) closeSheet(); },
     onLongPress: (o, ev) => { if (!editing || pend || tool==='pen' || moving!=null) return; if (o.shape!=null) return shapeMenu(o.shape, ev); emptyMenu(+o.lng.toFixed(7), +o.lat.toFixed(7), ev); },
-    onFreehand: async (pts, closed) => { const name = await askName(); tool = 'pan'; live?.setTool('pan'); if (name===null) return render(); mutate(()=>doc.shapes.push({ t:closed?'g':'p', pts, c:color, n:name })); },
+    onDraw: on => dlg.classList.toggle('drw', on),
+    onFreehand: async raw => {
+      const o = beautifyGeo(raw);                                       // ίδιο «ομορφάδεμα» με τον χάρτη εικόνας: ισιώνει, κλείνει, βρίσκει ορθογώνια
+      tool = 'pan'; live?.setTool('pan');
+      if (!o || (o.t==='p' && o.pts.length<2)) return render();
+      const name = await askName(); if (name===null) return render();
+      mutate(()=>doc.shapes.push({ ...o, c:color, n:name }));
+    },
     onSearch: async () => { const q = ((await ask('Αναζήτηση διεύθυνσης ή τόπου',''))||'').trim(); if (!q) return; const r = await geocode(q); if (!r) return toast('Δεν βρέθηκε'); live?.flyTo(r.lat, r.lng, 18); },
     onGeoWait: () => toast('Αναμονή για τη θέση σου… (δώσε άδεια τοποθεσίας στον browser)'),
     onGeoError: e => toast('Η τοποθεσία δεν είναι διαθέσιμη' + (e && e.code===1 ? ' (δεν δόθηκε άδεια)' : '')),
@@ -434,6 +453,7 @@ export function initMap(ctx){
     const base = baseW*(doc.lsize||2.4)/100, f = Math.max(.3, Math.min(3, Math.pow(s, -.6)));
     stage.style.setProperty('--lbe', Math.max(base*f, 14/s).toFixed(2)+'px');
   };
+  function liveSizes(){ if (isLive() && live) live.setSizes(+(7+(doc.size||3.2)*1.8).toFixed(1), +(8+(doc.lsize||2.4)*2.2).toFixed(1)); }
   function layout(){
     if (!mapImg) return;
     const vw = vp.clientWidth, vh = vp.clientHeight, asp = mapImg.w/mapImg.h;
@@ -798,8 +818,8 @@ export function initMap(ctx){
     if (a==='usepick'){ finishPick(doc.list[selected].l); return; }
   });
   dlg.addEventListener('input', e => {
-    if (e.target.matches('.mp-size')){ doc.size = +e.target.value; layout(); scheduleSave(); }
-    if (e.target.matches('.mp-lsize')){ doc.lsize = +e.target.value; layout(); scheduleSave(); }
+    if (e.target.matches('.mp-size')){ doc.size = +e.target.value; layout(); liveSizes(); scheduleSave(); }
+    if (e.target.matches('.mp-lsize')){ doc.lsize = +e.target.value; layout(); liveSizes(); scheduleSave(); }
   });
   fileEl.addEventListener('change', async e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f || !curId) return;
@@ -844,8 +864,8 @@ export function initMap(ctx){
       foot.innerHTML = `<div class="hint">Πράσινο: ελεύθερη · Κόκκινο: κατειλημμένη · Κράτα πατημένο σε σημείο: θέση ή σχέδιο · Κράτα πατημένη μια θέση για να τη μετακινήσεις</div>
         <button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="fmore">⚙ ${fmore ? 'Λιγότερα' : 'Ρυθμίσεις'}</button>
         ${fmore ? `<div class="mp-more"><button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>${isLive() ? '' : '<button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button>'}<button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
-        ${isLive() ? '' : `<label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>`}
-        ${isLive() ? '' : `<label>Μέγεθος ονομάτων <input class="mp-lsize" type="range" min="0.8" max="8" step="0.1" value="${doc.lsize||2.4}"></label>`}</div>` : ''}`;
+        <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
+        ${`<label>Μέγεθος ονομάτων <input class="mp-lsize" type="range" min="0.8" max="8" step="0.1" value="${doc.lsize||2.4}"></label>`}</div>` : ''}`;
     } else if (mode==='pick'){
       foot.innerHTML = `<div class="hint">Πάτα μια ελεύθερη (πράσινη) θέση ή μια περιοχή που έχεις σχεδιάσει για να την επιλέξεις.</div>`;
     } else {
@@ -892,7 +912,7 @@ export function initMap(ctx){
     liveEl.hidden = !isLive(); if (!isLive()) live?.stop();
     if (isLive()){
       stage.style.display = 'none'; emptyEl.hidden = true;
-      ensureLive().then(l => { l.setTool(tool); pushLive(); l.start(); }).catch(()=>{});
+      ensureLive().then(l => { l.setTool(tool); l.setSizes(+(7+(doc.size||3.2)*1.8).toFixed(1), +(8+(doc.lsize||2.4)*2.2).toFixed(1)); pushLive(); l.start(); }).catch(()=>{});
     } else if (!mapImg){
       img.removeAttribute('src'); stage.style.display = 'none'; emptyEl.hidden = false;
       emptyEl.innerHTML = !curId
