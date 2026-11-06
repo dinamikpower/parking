@@ -132,6 +132,10 @@
     <div class="vid"><video id="vid" playsinline muted></video><div class="guide"></div></div>
     <canvas id="scanPrev" style="display:block;width:60%;margin:0 auto 8px;border-radius:6px;background:#222"></canvas>
     <div id="scanOut" class="scanout"></div>
+    <div class="actions" id="scanTools" style="margin-bottom:8px" hidden>
+      <button type="button" class="btn grow" id="scanTorch" hidden>🔦 Φλας</button>
+      <button type="button" class="btn grow" id="scanZoom" hidden>🔍 Zoom 1×</button>
+    </div>
     <div class="actions">
       <button type="button" class="btn grow" id="scanClose">Κλείσιμο</button>
       <label class="btn grow" style="text-align:center">📁 Φωτογραφία
@@ -388,6 +392,37 @@ window.__parseAuto = parseAuto;
 
 const scanDlg = $('#scan'), vid = $('#vid'), out = $('#scanOut');
 let worker = null, scanning = false, stream = null, onScan = null;
+let track = null, torchCap = false, torchOn = false, torchManual = false, zoomCaps = null, zoomIdx = 0, lowCount = 0;
+const tinyCv = document.createElement('canvas'); tinyCv.width = 48; tinyCv.height = 24;
+const tinyCx = tinyCv.getContext('2d', { willReadFrequently:true });
+function brightness(){                                   // μέση φωτεινότητα (0-255) του πλαισίου στόχευσης
+  const vw = vid.videoWidth, vh = vid.videoHeight; if (!vw) return 128;
+  tinyCx.drawImage(vid, vw*.05, vh*.30, vw*.9, vh*.40, 0, 0, 48, 24);
+  const d = tinyCx.getImageData(0,0,48,24).data; let s = 0;
+  for (let i=0;i<d.length;i+=4) s += d[i]*.3 + d[i+1]*.59 + d[i+2]*.11;
+  return s/(d.length/4);
+}
+async function setTorch(on){
+  if (!track || !torchCap) return;
+  try { await track.applyConstraints({ advanced:[{ torch:on }] }); torchOn = on; } catch {}
+  const b = $('#scanTorch'); b.textContent = torchOn ? '🔦 Φλας: ανοιχτό' : '🔦 Φλας'; b.classList.toggle('go', torchOn);
+}
+async function initTrack(){
+  track = stream.getVideoTracks()[0]; torchOn = false; torchManual = false; lowCount = 0; zoomIdx = 0;
+  const cap = track.getCapabilities?.() || {};
+  torchCap = !!cap.torch;
+  zoomCaps = cap.zoom ? cap.zoom : null;
+  try { if (cap.focusMode?.includes('continuous')) await track.applyConstraints({ advanced:[{ focusMode:'continuous' }] }); } catch {}
+  $('#scanTorch').hidden = !torchCap; $('#scanTorch').textContent = '🔦 Φλας'; $('#scanTorch').classList.remove('go');
+  $('#scanZoom').hidden = !zoomCaps; $('#scanZoom').textContent = '🔍 Zoom 1×';
+  $('#scanTools').hidden = !(torchCap || zoomCaps);
+}
+$('#scanTorch').onclick = async () => { torchManual = true; await setTorch(!torchOn); };
+$('#scanZoom').onclick = async () => {
+  if (!track || !zoomCaps) return;
+  const steps = [1, 2, 3].filter(z => z <= zoomCaps.max); zoomIdx = (zoomIdx+1) % steps.length;
+  try { await track.applyConstraints({ advanced:[{ zoom: Math.max(zoomCaps.min||1, steps[zoomIdx]) }] }); $('#scanZoom').textContent = `🔍 Zoom ${steps[zoomIdx]}×`; } catch {}
+};
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
 async function getWorker(){
@@ -498,7 +533,7 @@ window.__iso = { otsu, components, isolate, erode3 };
 
 function stopScan(){
   scanning = false;
-  stream?.getTracks().forEach(t=>t.stop()); stream = null; vid.srcObject = null;
+  stream?.getTracks().forEach(t=>t.stop()); stream = null; vid.srcObject = null; track = null; torchOn = false; $('#scanTools').hidden = true;
 }
 function accept(plate){
   stopScan(); if (scanDlg.open) scanDlg.close();
@@ -510,19 +545,23 @@ async function openScan(cb){
   onScan = cb; out.textContent = 'Άνοιγμα κάμερας…'; scanDlg.showModal();
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} }, audio:false });
-    vid.srcObject = stream; await vid.play();
+    vid.srcObject = stream; await vid.play(); await initTrack();
+    await sleep(500); if (torchCap && brightness() < 60){ lowCount = 2; await setTorch(true); }      // σκοτάδι από την αρχή: φλας αμέσως
   } catch(e){
     out.textContent = 'Δεν δόθηκε πρόσβαση στην κάμερα. Πάτα «Φωτογραφία» για να τραβήξεις κοντινή φωτογραφία της πινακίδας.';
     return;
   }
   out.textContent = 'Φόρτωση αναγνώρισης (μόνο την πρώτη φορά)…';
   let w; try { w = await getWorker(); } catch(e){ out.textContent = e.message; return; }
-  scanning = true; const seen = {}; let n = 0;
+  scanning = true; const seen = {}, reads = []; let n = 0, dark = false;
   out.textContent = 'Στόχευσε την πινακίδα μέσα στο πράσινο πλαίσιο.';
   while (scanning){
     const vw = vid.videoWidth, vh = vid.videoHeight;
     if (!vw){ await sleep(200); continue; }
     try {
+      // χαμηλός φωτισμός: άναψε αυτόματα το φλας (αν το υποστηρίζει η συσκευή) εκτός αν το έχει ρυθμίσει ο χρήστης
+      const br = brightness(); lowCount = br < 60 ? lowCount+1 : 0; dark = lowCount >= 2;
+      if (dark && torchCap && !torchOn && !torchManual) await setTorch(true);
       const c = prep(vid, vw*.05, vh*.30, vw*.9, vh*.40);
       const pv = $('#scanPrev'); pv.width = Math.round(c.width/3); pv.height = Math.round(c.height/3);
       pv.getContext('2d').drawImage(c, 0, 0, pv.width, pv.height);   // τι «βλέπει» η αναγνώριση
@@ -531,8 +570,20 @@ async function openScan(cb){
       n++;
       const raw = (data.text||'').trim().replace(/\s+/g,' ');
       const p = parseAuto(data.text);
-      if (p){ seen[p] = (seen[p]||0) + 1; if (seen[p] >= 2) return accept(p); }
+      if (p){
+        seen[p] = (seen[p]||0) + 1; reads.push(p);
+        // μια πινακίδα τύπου «ΑΒ1234» είναι συχνά κομμένη ελληνική (έχασε το πρώτο/τελευταίο γράμμα): θέλει 3 ίδιες αναγνώσεις
+        const need = /^[A-Z]{1,2}\d{4}$/.test(p) ? 3 : 2;
+        if (seen[p] >= need) return accept(p);
+        const same = reads.filter(r => r.length===p.length).slice(-5);            // ψηφοφορία ανά χαρακτήρα
+        if (same.length >= 4){
+          let cons = '', okv = true;
+          for (let i=0;i<p.length;i++){ const cnt = {}; same.forEach(r => cnt[r[i]] = (cnt[r[i]]||0)+1); const [ch,k] = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0]; if (k/same.length < .6) okv = false; cons += ch; }
+          if (okv && parseAuto(cons)===cons && !/^[A-Z]{1,2}\d{4}$/.test(cons)) return accept(cons);
+        }
+      }
       out.innerHTML = (p ? `Διαβάζω: <b>${p}</b> …` : 'Στόχευσε την πινακίδα μέσα στο πράσινο πλαίσιο.')
+        + (dark && !torchOn ? `<div style="font-size:13px;margin-top:4px">🌙 Χαμηλός φωτισμός${torchCap ? '' : ' — φώτισε την πινακίδα (π.χ. με φακό άλλου κινητού)'}</div>` : '')
         + `<div style="font-size:12px;margin-top:4px">Ανάγνωση #${n}: «${esc(raw)||'—'}»</div>`;
     } catch(err){
       out.textContent = 'Σφάλμα αναγνώρισης: ' + (err && err.message || err);
