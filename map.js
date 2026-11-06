@@ -46,6 +46,9 @@ const CSS = `
 #mapDlg.erase .shp{pointer-events:auto}
 #mapDlg.erase .mp-svg polyline.hit{pointer-events:stroke}
 #mapDlg.erase .mp-svg polygon.hit{pointer-events:all}
+#mapDlg.pickz .shp{pointer-events:auto;cursor:pointer}
+#mapDlg.pickz .mp-svg polyline.hit{pointer-events:stroke}
+#mapDlg.pickz .mp-svg polygon.hit{pointer-events:all}
 .mp-tools{display:flex;gap:6px;flex-wrap:wrap;width:100%;align-items:center}
 .mp-tool{padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--text);font-size:15px;font-weight:600}
 .mp-tool.on{border-color:var(--accent);background:var(--accent);color:#fff}
@@ -488,6 +491,10 @@ export function initMap(ctx){
   function tap(target, e){
     const sp = target.closest?.('.spot');
     if (sp) return spotTap(+sp.dataset.i);
+    if (mode==='pick' && !editing){            // επιλογή περιοχής που έχει σχεδιαστεί (π.χ. «Ζώνη Α»)
+      const sh = target.closest?.('[data-si]');
+      if (sh){ const s = doc.shapes[+sh.dataset.si]; if (s?.n) return finishPick(s.n); return toast('Αυτή η περιοχή δεν έχει όνομα — δώσε της όνομα από την επεξεργασία χάρτη'); }
+    }
     if (editing){
       if (tool==='erase'){ const sh = target.closest?.('[data-si]'); if (sh){ const i = +sh.dataset.si; mutate(()=>doc.shapes.splice(i,1)); } return; }
       if (tool==='pan'){ const sh = target.closest?.('[data-si]'); if (sh){ const i = +sh.dataset.si, n = prompt('Όνομα περιοχής:', doc.shapes[i]?.n || ''); if (n!==null && n.trim()) mutate(()=>{ doc.shapes[i].n = n.trim(); }); } return; }
@@ -677,7 +684,7 @@ export function initMap(ctx){
         <label>Μέγεθος ονομάτων <input class="mp-lsize" type="range" min="0.8" max="8" step="0.1" value="${doc.lsize||2.4}"></label>
         <button class="btn primary" data-a="done" style="margin-left:auto">Τέλος</button>`;
     } else if (mode==='pick'){
-      foot.innerHTML = `<div class="hint">Πάτα μια ελεύθερη (πράσινη) θέση για να την επιλέξεις.</div>`;
+      foot.innerHTML = `<div class="hint">Πάτα μια ελεύθερη (πράσινη) θέση ή μια περιοχή που έχεις σχεδιάσει για να την επιλέξεις.</div>`;
     } else {
       foot.innerHTML = `<div class="hint">Πράσινο: ελεύθερη · Κόκκινο: κατειλημμένη. Πάτα μια θέση για λεπτομέρειες.</div><button class="btn" data-a="edit">✏️ Επεξεργασία χάρτη</button>`;
     }
@@ -703,6 +710,7 @@ export function initMap(ctx){
   }
   function render(){
     dlg.classList.toggle('erase', editing && (tool==='erase' || tool==='pan'));
+    dlg.classList.toggle('pickz', mode==='pick' && !editing);
     const occ = occupancy(), total = doc.list.length;
     let used = 0; for (const p of doc.list) if (occ.has(key(p.l))) used++;
     titleEl.innerHTML = `${esc(curMap()?.name || 'Χάρτης παρκινγκ')}<small>${total ? `${total-used} ελεύθερες από ${total}` : 'δεν έχουν οριστεί θέσεις'}</small>`;
