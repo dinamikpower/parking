@@ -63,6 +63,7 @@ const CSS = `
 .mp-sheet .m{color:var(--muted);font-size:14px;margin-top:6px}
 .mp-foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mp-foot{transition:opacity .12s}
+#mapDlg.drtool .mp-foot{position:absolute;left:0;right:0;bottom:0;z-index:5;box-shadow:0 -4px 14px rgba(0,0,0,.18)}
 #mapDlg.drw .mp-foot{opacity:0;pointer-events:none}
 .mp-foot .hint{flex:1 1 100%;font-size:13px;color:var(--muted)}
 .mp-foot label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
@@ -729,6 +730,7 @@ export function initMap(ctx){
   function render(){
     dlg.classList.toggle('erase', editing && (tool==='erase' || tool==='pan'));
     dlg.classList.toggle('edt', editing && tool!=='erase' && tool!=='rect' && tool!=='pen');
+    dlg.classList.toggle('drtool', editing && (tool==='rect' || tool==='pen'));
     dlg.classList.toggle('pickz', mode==='pick' && !editing);
     const occ = occupancy(), total = doc.list.length;
     let used = 0; for (const p of doc.list) if (occ.has(key(p.l))) used++;
