@@ -682,7 +682,15 @@ $('#scanFile').addEventListener('change', async e=>{        // εναλλακτ�
 scanDlg.addEventListener('close', stopScan);
 $('#scanClose').onclick = ()=>scanDlg.close();
 
-$('#camQ').onclick = ()=>openScan(p=>{ $('#q').value = p; render(); });
+// Αν η αναζήτηση βρίσκει ΕΝΑ όχημα μέσα με θέση στον χάρτη, ανοίγει κατευθείαν ο χάρτης πάνω στο όχημα
+function openFoundOnMap(){
+  const k = plateKey($('#q').value); if (!k || !mapApi) return false;
+  const m = all.filter(v => !v.exitAt && (v.plateKey||plateKey(v.plate)).includes(k) && mapApi.hasSpot(v.location, v.mapId));
+  if (m.length !== 1) return false;
+  $('#q').blur(); mapApi.open({ mode:'browse', focus:m[0].location, mapId:m[0].mapId }); return true;
+}
+$('#camQ').onclick = ()=>openScan(p=>{ $('#q').value = p; render(); openFoundOnMap(); });
+$('#q').addEventListener('keydown', e => { if (e.key==='Enter') openFoundOnMap(); });
 $('#camF').onclick = ()=>openScan(p=>{ $('#fPlate').value = p; checkDup(); $('#fLoc').focus(); });
 
 /* ---------- Γεγονότα ---------- */
