@@ -50,6 +50,7 @@ const CSS = `
 #mapDlg.pickz .mp-svg polyline.hit{pointer-events:stroke}
 #mapDlg.pickz .mp-svg polygon.hit{pointer-events:all}
 .mp-tools{display:flex;gap:6px;flex-wrap:wrap;width:100%;align-items:center}
+.mp-hint{font-size:13px;color:var(--muted,#888);margin:0 0 6px}
 .mp-tool{padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--text);font-size:15px;font-weight:600}
 .mp-tool.on{border-color:var(--accent);background:var(--accent);color:#fff}
 .mp-sw{width:34px;height:34px;border-radius:50%;border:3px solid transparent;padding:0;box-shadow:0 0 0 1px var(--line)}
