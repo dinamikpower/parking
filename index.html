@@ -751,7 +751,13 @@ function openFoundOnMap(){
   if (m.length !== 1) return false;
   $('#q').blur(); mapApi.open({ mode:'browse', focus:m[0].location, mapId:m[0].mapId }); return true;
 }
-$('#camQ').onclick = ()=>openScan(p=>{ $('#q').value = p; render(); openFoundOnMap(); });
+// Σάρωση πινακίδας: αν το όχημα δεν είναι μέσα → ανοίγει κατευθείαν η καταχώρηση· αν είναι ήδη μέσα → δείχνει πού βρίσκεται
+$('#camQ').onclick = ()=>openScan(p=>{
+  $('#q').value = p; render();
+  const k = plateKey(p), inside = all.some(v => !v.exitAt && (v.plateKey||plateKey(v.plate)) === k);
+  if (inside){ openFoundOnMap(); return; }
+  ensureStaff(); $('#q').value = ''; render(); openForm(null, p);
+});
 let ofmT = 0;
 const ofmGo = () => { if (Date.now()-ofmT < 800) return; if (openFoundOnMap()) ofmT = Date.now(); };
 $('#q').addEventListener('keydown', e => { if (e.key==='Enter' || e.keyCode===13){ e.preventDefault(); ofmGo(); } });
