@@ -39,9 +39,9 @@ const CSS = `
 .mp-svg polyline.hit{stroke:transparent;stroke-width:24px}
 .mp-svg polygon{stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-width:2px}
 .mp-svg polygon.hit{fill:transparent;stroke:transparent;stroke-width:24px}
-.shp-l{position:absolute;transform:translate(-50%,-50%);font-size:var(--lb,12px);font-weight:700;color:#fff;background:rgba(0,0,0,.62);padding:.06em .5em;border-radius:.4em;line-height:1.3;white-space:nowrap;pointer-events:none}
+.shp-l{position:absolute;transform:translate(-50%,-50%);font-size:calc(var(--lb,12px) * var(--lz,1));font-weight:700;color:#fff;background:rgba(0,0,0,.62);padding:.06em .5em;border-radius:.4em;line-height:1.3;white-space:nowrap;pointer-events:none}
 .shp{position:absolute;box-sizing:border-box;border:2px solid;border-radius:3px;pointer-events:none}
-.shp b{display:inline-block;font-size:var(--lb,12px);color:#fff;background:rgba(0,0,0,.6);padding:.06em .5em;border-radius:0 0 .4em 0;line-height:1.3;white-space:nowrap;overflow:hidden;max-width:100%}
+.shp b{display:inline-block;font-size:calc(var(--lb,12px) * var(--lz,1));color:#fff;background:rgba(0,0,0,.6);padding:.06em .5em;border-radius:0 0 .4em 0;line-height:1.3;white-space:nowrap;overflow:hidden;max-width:100%}
 .shp.prev{border-style:dashed}
 #mapDlg.erase .shp{pointer-events:auto}
 #mapDlg.erase .mp-svg polyline.hit{pointer-events:stroke}
@@ -374,7 +374,10 @@ export function initMap(ctx){
   function mutate(fn){ undo.push(snap()); if (undo.length>50) undo.shift(); fn(); scheduleSave(); render(); }
 
   /* ---------- προβολή / zoom ---------- */
-  const apply = () => { stage.style.transform = `translate(${tx}px,${ty}px) scale(${s})`; };
+  const apply = () => {
+    stage.style.transform = `translate(${tx}px,${ty}px) scale(${s})`;
+    stage.style.setProperty('--lz', Math.max(.12, Math.min(4, 1/s)).toFixed(3));   // ονόματα: μικρότερο zoom → μεγαλύτερα, μεγαλύτερο zoom → μικρότερα (σταθερό μέγεθος στην οθόνη)
+  };
   function layout(){
     if (!mapImg) return;
     const vw = vp.clientWidth, vh = vp.clientHeight, asp = mapImg.w/mapImg.h;
