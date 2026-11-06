@@ -312,6 +312,13 @@ export function initMap(ctx){
     if (a==='tool'){ tool = b.dataset.t; startLabel = null; closeSheet(); return; }
     if (a==='color'){ color = b.dataset.c; renderFoot(); return; }
     if (a==='pickimg' || a==='img') return fileEl.click();
+    if (a==='clearmap'){
+      if (!confirm('Να διαγραφεί ΟΛΟΣ ο χάρτης (φωτογραφία, θέσεις και σχέδια);\nΔεν αναιρείται και φεύγει για όλους τους υπαλλήλους.')) return;
+      clearTimeout(saveT);
+      try { await store.clearMap(); } catch(err){ return toast('Σφάλμα διαγραφής: '+err.message); }
+      editing = false; startLabel = null; undo = []; selected = null; mapImg = null; remote = { list:[], size:3.2, shapes:[] }; doc = cloneRemote();
+      closeSheet(); renderAll(); onChange?.(); toast('Ο χάρτης διαγράφηκε'); return;
+    }
     if (a==='zone'){ zoneFilter = b.dataset.z || null; fitZone(); render(); return; }
     if (a==='newzone'){ const l = (prompt('Πρώτη θέση της νέας ζώνης/σειράς (π.χ. B1):', lastLabel?nextLabel(lastLabel.replace(/\d+$/,'0')):'B1')||'').trim(); if (l){ startLabel = l; toast('Πάτα στον χάρτη για να μπει η '+l); renderFoot(); } return; }
     if (a==='undo'){ while (undo.length && undo[undo.length-1]===null) undo.pop(); const prev = undo.pop(); if (prev){ const o = JSON.parse(prev); doc.list = o.list; doc.shapes = o.shapes; scheduleSave(); closeSheet(); } return; }
@@ -365,7 +372,7 @@ export function initMap(ctx){
       foot.innerHTML = `<div class="hint">${HINT}</div>
         <div class="mp-tools">${TOOLS.map(([t,i,n])=>`<button class="mp-tool ${tool===t?'on':''}" data-a="tool" data-t="${t}">${i} ${n}</button>`).join('')}</div>
         ${(tool==='rect'||tool==='pen') ? `<div class="mp-tools">${COLORS.map(c=>`<button class="mp-sw ${c===color?'on':''}" data-a="color" data-c="${c}" style="background:${c}" aria-label="χρώμα"></button>`).join('')}</div>` : ''}
-        ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button>
+        ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
         <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
         <button class="btn primary" data-a="done" style="margin-left:auto">Τέλος</button>`;
     } else if (mode==='pick'){

@@ -177,6 +177,8 @@ if (LIVE) {
     async add(v){ await fs.addDoc(col, { ...v, entryAt: fs.serverTimestamp(), exitAt:null }); },
     async update(id,p){ await fs.updateDoc(fs.doc(db,'vehicles',id), p); },
     async exit(id){ await fs.updateDoc(fs.doc(db,'vehicles',id), { exitAt: fs.serverTimestamp() }); },
+    async remove(id){ await fs.deleteDoc(fs.doc(db,'vehicles',id)); },
+    async clearMap(){ await Promise.all(['main','spots','shapes'].map(n => fs.deleteDoc(fs.doc(db,'maps',n)))); },
     // Χάρτης: η εικόνα και οι θέσεις σε ξεχωριστά έγγραφα (το όριο του Firestore είναι ~1MB ανά έγγραφο)
     subscribeMap(cb){
       let img = null, spots = null, shapes = null; const emit = () => cb({ img, spots, shapes });
@@ -199,6 +201,8 @@ if (LIVE) {
     async add(v){ const a=load(); a.push({ ...v, id:crypto.randomUUID(), entryAt:Date.now(), exitAt:null }); save(a); },
     async update(id,p){ save(load().map(x=>x.id===id?{...x,...p}:x)); },
     async exit(id){ save(load().map(x=>x.id===id?{...x,exitAt:Date.now()}:x)); },
+    async remove(id){ save(load().filter(x=>x.id!==id)); },
+    async clearMap(){ ['img','spots','shapes'].forEach(k=>localStorage.removeItem('parking-map-'+k)); mapSubs.forEach(f=>f()); },
     subscribeMap(cb){
       const emit=()=>{ let img=null,spots=null,shapes=null;
         try{img=JSON.parse(localStorage.getItem('parking-map-img'))}catch{}
@@ -247,8 +251,8 @@ function carCard(v){
       ${v.note?`<span>📝 ${esc(v.note)}</span>`:''}
       ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}
     </div>
-    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}<button class="btn grow" data-act="edit">Επεξεργασία</button><button class="btn go grow" data-act="exit">Έφυγε ✓</button></div>`:
-      `<div class="actions"><button class="btn grow" data-act="again">Ξανά στο παρκινγκ</button></div>`}
+    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}<button class="btn grow" data-act="edit">Επεξεργασία</button><button class="btn go grow" data-act="exit">Έφυγε ✓</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>`:
+      `<div class="actions"><button class="btn grow" data-act="again">Ξανά στο παρκινγκ</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>`}
   </div>`;
 }
 
@@ -549,6 +553,7 @@ $('#list').addEventListener('click', async e=>{
   if (btn.dataset.act==='map') mapApi.open({ mode:'browse', focus: v.location });
   if (btn.dataset.act==='edit') openForm(v);
   if (btn.dataset.act==='again'){ ensureStaff(); openForm({...v, __again:true}); }
+  if (btn.dataset.act==='del' && confirm(`Να διαγραφεί οριστικά το ${v.plate} από τη λίστα και το ιστορικό;`)) { try { await store.remove(v.id); toast('Το όχημα διαγράφηκε'); } catch(err){ toast('Σφάλμα διαγραφής: '+err.message); } }
   if (btn.dataset.act==='exit' && confirm(`Έφυγε το ${v.plate};`)) { await store.exit(v.id); toast('Καταγράφηκε έξοδος'); }
 });
 $('#q').addEventListener('input',render);
