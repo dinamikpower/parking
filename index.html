@@ -2,7 +2,7 @@
 <html lang="el">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
 <link rel="manifest" href="manifest.json">
 <title>Παρκινγκ</title>
@@ -64,8 +64,17 @@
   .plrow{display:flex;gap:8px}
   .plrow input{flex:1;min-width:0}
   .plrow .cam{width:52px;border-radius:10px}
-  .vid{position:relative;background:#000;border-radius:12px;overflow:hidden;margin-bottom:10px}
-  .vid video{display:block;width:100%}
+  html,body{touch-action:manipulation}                      /* χωρίς zoom με διπλό πάτημα */
+  #scan{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0}
+  #scan[open]{display:flex;flex-direction:column}
+  #scan .scanwrap{flex:1;min-height:0;display:flex;flex-direction:column;padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+  #scan h2{margin:0 0 6px;font-size:17px;flex:none}
+  #scan .vidarea{flex:1 1 0;min-height:60px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;overflow:hidden}
+  #scan #scanPrev{flex:none;display:block;height:34px;width:auto;max-width:60%;margin:0 auto 4px;border-radius:6px;background:#222}
+  #scan .scanout{flex:none;min-height:0;max-height:20dvh;overflow:auto;margin-bottom:6px;font-size:14px}
+  #scan .actions{flex:none;margin-top:0}
+  .vid{position:relative;background:#000;border-radius:12px;overflow:hidden;flex:none}
+  .vid video{display:block;width:100%;height:100%}
   .guide{position:absolute;left:5%;width:90%;top:30%;height:40%;border:3px solid #22c55e;border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.45)}
   .scanout{min-height:48px;font-size:15px;color:var(--muted);margin-bottom:10px}
   .scanout b{color:var(--text);font-size:22px;letter-spacing:2px}
@@ -127,12 +136,12 @@
 </dialog>
 
 <dialog id="scan">
-  <div style="padding:16px">
-    <h2 style="margin:0 0 10px;font-size:19px">Σάρωση πινακίδας</h2>
-    <div class="vid"><video id="vid" playsinline muted></video><div class="guide"></div></div>
-    <canvas id="scanPrev" style="display:block;width:60%;margin:0 auto 8px;border-radius:6px;background:#222"></canvas>
+  <div class="scanwrap">
+    <h2>Σάρωση πινακίδας</h2>
+    <div class="vidarea"><div class="vid"><video id="vid" playsinline muted></video><div class="guide"></div></div></div>
+    <canvas id="scanPrev"></canvas>
     <div id="scanOut" class="scanout"></div>
-    <div class="actions" id="scanTools" style="margin-bottom:8px" hidden>
+    <div class="actions" id="scanTools" style="margin-bottom:6px" hidden>
       <button type="button" class="btn grow" id="scanTorch" hidden>🔦 Φλας</button>
       <button type="button" class="btn grow" id="scanZoom" hidden>🔍 Zoom 1×</button>
     </div>
@@ -407,6 +416,14 @@ async function setTorch(on){
   try { await track.applyConstraints({ advanced:[{ torch:on }] }); torchOn = on; } catch {}
   const b = $('#scanTorch'); b.textContent = torchOn ? '🔦 Φλας: ανοιχτό' : '🔦 Φλας'; b.classList.toggle('go', torchOn);
 }
+function fitVideo(){                                      // το βίντεο μεγαλώνει όσο χωράει, χωρίς σκρολ
+  const area = $('.vidarea'), box = $('.vid'); if (!vid.videoWidth || !area) return;
+  const s = Math.min(area.clientWidth / vid.videoWidth, area.clientHeight / vid.videoHeight);
+  box.style.width = Math.floor(vid.videoWidth*s)+'px'; box.style.height = Math.floor(vid.videoHeight*s)+'px';
+}
+window.addEventListener('resize', fitVideo);
+vid.addEventListener('loadedmetadata', fitVideo);
+if (window.ResizeObserver) new ResizeObserver(fitVideo).observe($('.vidarea'));
 async function initTrack(){
   track = stream.getVideoTracks()[0]; torchOn = false; torchManual = false; lowCount = 0; zoomIdx = 0;
   const cap = track.getCapabilities?.() || {};
@@ -424,6 +441,10 @@ $('#scanZoom').onclick = async () => {
   try { await track.applyConstraints({ advanced:[{ zoom: Math.max(zoomCaps.min||1, steps[zoomIdx]) }] }); $('#scanZoom').textContent = `🔍 Zoom ${steps[zoomIdx]}×`; } catch {}
 };
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
+// Όχι zoom της σελίδας (μόνο ο χάρτης κάνει zoom): iOS gestures και Ctrl+τροχός
+['gesturestart','gesturechange','gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
+document.addEventListener('wheel', e => { if (e.ctrlKey) e.preventDefault(); }, { passive:false });
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && ['+','-','=','0'].includes(e.key)) e.preventDefault(); });
 
 async function getWorker(){
   if (worker) return worker;
@@ -545,7 +566,7 @@ async function openScan(cb){
   onScan = cb; out.textContent = 'Άνοιγμα κάμερας…'; scanDlg.showModal();
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} }, audio:false });
-    vid.srcObject = stream; await vid.play(); await initTrack();
+    vid.srcObject = stream; await vid.play(); fitVideo(); await initTrack();
     await sleep(500); if (torchCap && brightness() < 60){ lowCount = 2; await setTorch(true); }      // σκοτάδι από την αρχή: φλας αμέσως
   } catch(e){
     out.textContent = 'Δεν δόθηκε πρόσβαση στην κάμερα. Πάτα «Φωτογραφία» για να τραβήξεις κοντινή φωτογραφία της πινακίδας.';
