@@ -160,6 +160,7 @@
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
 import { initMap } from './map.js?v=10';
+import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
 const LIVE = !!(CFG && CFG.apiKey && !String(CFG.apiKey).startsWith('YOUR'));
@@ -562,6 +563,48 @@ function accept(plate){
   onScan?.(plate);
 }
 
+// Κύρια αναγνώριση (AI): εντοπισμός πινακίδας + ανάγνωση. Δέχεται το ίδιο αποτέλεσμα 2 φορές.
+async function aiScan(){
+  scanning = true; const seen = {}; let n = 0, dark = false;
+  const pv = $('#scanPrev'), pvx = pv.getContext('2d');
+  out.textContent = 'Στόχευσε την πινακίδα μέσα στο πράσινο πλαίσιο.';
+  while (scanning){
+    const vw = vid.videoWidth, vh = vid.videoHeight;
+    if (!vw){ await sleep(200); continue; }
+    try {
+      const br = brightness(); lowCount = br < 60 ? lowCount+1 : 0; dark = lowCount >= 2;
+      if (dark && torchCap && !torchOn && !torchManual) await setTorch(true);
+      const sx = vw*.02, sy = vh*.18, sw = vw*.96, sh = vh*.64;
+      const t0 = performance.now();
+      const res = await readPlates(vid, sx, sy, sw, sh);
+      if (!scanning) break;
+      n++;
+      const best = res[0];
+      if (best){
+        const bw = best.box[2]-best.box[0], bh = best.box[3]-best.box[1];
+        pv.width = 240; pv.height = Math.max(24, Math.round(240*bh/bw));
+        pvx.drawImage(vid, best.box[0], best.box[1], bw, bh, 0, 0, pv.width, pv.height);
+      } else { pv.width = 240; pv.height = 40; pvx.clearRect(0,0,240,40); }
+      let shown = '';
+      for (const r of res){
+        const p = r.conf >= .6 ? parseAuto(r.text) : null;
+        if (!shown) shown = p || r.text;
+        if (p){
+          seen[p] = (seen[p]||0) + 1;
+          if (seen[p] >= 2 || (r.conf >= .97 && r.score >= .8 && seen[p] >= 1 && /^[A-Z]{3}\d{4}$/.test(p) && n >= 2)) return accept(p);
+        }
+      }
+      out.innerHTML = (shown ? `Διαβάζω: <b>${esc(shown)}</b> …` : 'Στόχευσε την πινακίδα μέσα στο πράσινο πλαίσιο.')
+        + (dark && !torchOn ? `<div style="font-size:13px;margin-top:4px">🌙 Χαμηλός φωτισμός${torchCap ? '' : ' — φώτισε την πινακίδα (π.χ. με φακό άλλου κινητού)'}</div>` : '')
+        + `<div style="font-size:12px;margin-top:4px">Ανάγνωση #${n} · ${Math.round(performance.now()-t0)} ms${best ? ` · βεβαιότητα ${Math.round(best.conf*100)}%` : ' · δεν βρέθηκε πινακίδα'}</div>`;
+    } catch(err){
+      out.textContent = 'Σφάλμα αναγνώρισης: ' + (err && err.message || err);
+      stopScan(); return;
+    }
+    await sleep(60);
+  }
+}
+
 async function openScan(cb){
   onScan = cb; out.textContent = 'Άνοιγμα κάμερας…'; scanDlg.showModal();
   try {
@@ -573,6 +616,8 @@ async function openScan(cb){
     return;
   }
   out.textContent = 'Φόρτωση αναγνώρισης (μόνο την πρώτη φορά)…';
+  let ai = true; try { await loadAlpr(); } catch(e){ ai = false; console.warn('AI ALPR:', e); }
+  if (ai) return aiScan();
   let w; try { w = await getWorker(); } catch(e){ out.textContent = e.message; return; }
   scanning = true; const seen = {}, reads = []; let n = 0, dark = false;
   out.textContent = 'Στόχευσε την πινακίδα μέσα στο πράσινο πλαίσιο.';
@@ -618,7 +663,13 @@ $('#scanFile').addEventListener('change', async e=>{        // εναλλακτ�
   const f = e.target.files[0]; e.target.value = ''; if(!f) return;
   out.textContent = 'Διαβάζω τη φωτογραφία…';
   try {
-    const w = await getWorker(); const bmp = await createImageBitmap(f);
+    const bmp0 = await createImageBitmap(f);
+    try {
+      await loadAlpr();
+      const res = await readPlates(bmp0, 0, 0, bmp0.width, bmp0.height);
+      for (const r of res){ const p = r.conf >= .5 ? parseAuto(r.text) : null; if (p) return accept(p); }
+    } catch(e){ console.warn('AI ALPR (photo):', e); }
+    const w = await getWorker(); const bmp = bmp0;
     const sc = Math.min(1, 1800/Math.max(bmp.width,bmp.height));
     const c = prep(bmp, 0, 0, bmp.width, bmp.height, false); // κρατάει όλο το κάδρο
     await w.setParameters({ tessedit_pageseg_mode: '11' });

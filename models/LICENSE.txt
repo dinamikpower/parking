@@ -1,0 +1,2 @@
+Plate detector: YOLOv9-t 384 license-plate model from ankandrew/open-image-models (MIT).
+Plate OCR: cct-xs-v2-global model from ankandrew/fast-plate-ocr (MIT).
