@@ -1,25 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Πρόσβαση έχουν μόνο όσοι έχουν έγγραφο staff/{uid} (τους προσθέτει ο διαχειριστής μέσα από την εφαρμογή).
-    function signedIn() { return request.auth != null; }
-    function isStaff()  { return signedIn() && exists(/databases/$(database)/documents/staff/$(request.auth.uid)); }
-    function isAdmin()  { return isStaff() && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.admin == true; }
-    function noInit()   { return !exists(/databases/$(database)/documents/meta/init); }
-    function isOwner()  { return signedIn() && request.auth.token.email == 'ADMIN_EMAIL'; }   // αντικαθίσταται από το auth-setup.sh
-
-    match /vehicles/{id} { allow read, write: if isStaff(); }
-    match /maps/{id}     { allow read, write: if isStaff(); }
-
-    match /staff/{uid} {
-      allow read:   if signedIn() && (request.auth.uid == uid || isStaff());
-      // πρώτος διαχειριστής (μία φορά, μόνο το email του ιδιοκτήτη) ή οποιοσδήποτε διαχειριστής
-      allow create: if isAdmin() || (isOwner() && request.auth.uid == uid && request.resource.data.admin == true && noInit());
-      allow update, delete: if isAdmin();
+    // ΠΡΟΣΩΡΙΝΟ: ανοιχτό για όποιον έχει το link της εφαρμογής.
+    // Πριν μπουν πραγματικά τηλέφωνα πελατών, πρέπει να μπει login (βλ. επόμενο βήμα).
+    match /vehicles/{id} {
+      allow read, write: if true;
     }
-    match /meta/{d} {
-      allow read: if signedIn();
-      allow create: if d == 'init' && isOwner() && noInit();
+    match /maps/{id} {
+      allow read, write: if true;
     }
   }
 }

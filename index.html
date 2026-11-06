@@ -188,14 +188,12 @@ window.__plateKey = plateKey;
 /* ---------- Επίπεδο δεδομένων (Firebase ή τοπικό) ---------- */
 // Ονόματα εγγράφων ανά χάρτη (το «main» κρατά τα παλιά ονόματα ώστε να μη χαθεί ο υπάρχων χάρτης)
 const mapDocNames = id => id==='main' ? { img:'main', spots:'spots', shapes:'shapes' } : { img:id, spots:id+'_spots', shapes:id+'_shapes' };
-let store, ME = null;      // ME: ο συνδεδεμένος υπάλληλος (μόνο σε live λειτουργία)
+let store;
 if (LIVE) {
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
   const fs = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
   const app = initializeApp(CFG);
   const db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) });
-  ({ requireLogin: window.__rl } = await import('./auth.js?v=1'));
-  ME = await window.__rl(app, db, fs, CFG);           // δεν προχωράει η εφαρμογή αν δεν γίνει είσοδος
   const col = fs.collection(db, 'vehicles');
   store = {
     subscribe(cb){
@@ -275,9 +273,8 @@ modeEl.textContent = LIVE ? 'live' : 'demo';
 modeEl.className = 'badge ' + (LIVE ? 'live' : 'demo');
 modeEl.title = LIVE ? 'Συγχρονισμός σε πραγματικό χρόνο' : 'Τοπική λειτουργία – τα δεδομένα δεν μοιράζονται';
 
-const staff = () => ME ? ME.name : (localStorage.getItem('parking-staff') || '');
+const staff = () => localStorage.getItem('parking-staff') || '';
 function ensureStaff(){
-  if (ME) return;
   if (!staff()) { const n = prompt('Το όνομά σου (για το ιστορικό):'); if (n) localStorage.setItem('parking-staff', n.trim()); }
 }
 
