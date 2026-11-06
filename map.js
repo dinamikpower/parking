@@ -63,7 +63,9 @@ const CSS = `
 .mp-sheet .m{color:var(--muted);font-size:14px;margin-top:6px}
 .mp-foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mp-foot{transition:opacity .12s}
-#mapDlg.drtool .mp-foot{position:absolute;left:0;right:0;bottom:0;z-index:5;box-shadow:0 -4px 14px rgba(0,0,0,.18)}
+#mapDlg.menuoff .mp-foot{display:none}
+.mp-fab{display:none;position:absolute;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:6;border:0;border-radius:999px;padding:12px 16px;font-size:15px;font-weight:700;background:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+#mapDlg.menuoff.editing .mp-fab{display:block}
 #mapDlg.drw .mp-foot{opacity:0;pointer-events:none}
 .mp-foot .hint{flex:1 1 100%;font-size:13px;color:var(--muted)}
 .mp-foot label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
@@ -309,6 +311,7 @@ export function initMap(ctx){
     <div class="mp-vp"><div class="mp-stage"><img class="mp-img" alt=""><div class="mp-shapes"></div><div class="mp-spots"></div></div><div class="mp-empty" hidden></div></div>
     <div class="mp-sheet" hidden></div>
     <div class="mp-foot"></div>
+    <button class="mp-fab" data-a="menu">☰ Μενού</button>
     <input type="file" accept="image/*" hidden class="mp-file">`;
   document.body.append(dlg);
   const $ = s => dlg.querySelector(s);
@@ -321,7 +324,7 @@ export function initMap(ctx){
   let doc = { list:[], size:3.2, lsize:2.4, shapes:[] }; // τοπική κατάσταση (αλλάζει στην επεξεργασία)
   const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ffffff'];
   let tool = 'spot', color = COLORS[4], drawing = null;   // εργαλείο: pan | spot | rect | pen | erase
-  let mode = 'browse', editing = false, pickCb = null;
+  let mode = 'browse', editing = false, pickCb = null, menuOff = false;
   let zoneFilter = null, focusKey = null, selected = null, startLabel = null, lastLabel = '', undo = [];
   let s = 1, tx = 0, ty = 0, baseW = 0, baseH = 0, saveT = null;
   // πολλοί χάρτες
@@ -585,8 +588,9 @@ export function initMap(ctx){
       catch(err){ toast('Σφάλμα αποθήκευσης: '+err.message); }
       remote = final; doc = cloneRemote(); editing = false; closeSheet(); renderAll(); return;
     }
-    if (a==='tool'){ tool = b.dataset.t; startLabel = null; closeSheet(); return; }
-    if (a==='color'){ color = b.dataset.c; renderFoot(); return; }
+    if (a==='menu'){ menuOff = false; render(); return; }
+    if (a==='tool'){ tool = b.dataset.t; startLabel = null; closeSheet(); menuOff = true; render(); return; }
+    if (a==='color'){ color = b.dataset.c; renderFoot(); menuOff = true; render(); return; }
     if (a==='pickimg' || a==='img') return fileEl.click();
     if (a==='geoimg'){
       if (!curId) return;
@@ -730,7 +734,7 @@ export function initMap(ctx){
   function render(){
     dlg.classList.toggle('erase', editing && (tool==='erase' || tool==='pan'));
     dlg.classList.toggle('edt', editing && tool!=='erase' && tool!=='rect' && tool!=='pen');
-    dlg.classList.toggle('drtool', editing && (tool==='rect' || tool==='pen'));
+    dlg.classList.toggle('editing', editing); if (!editing) menuOff = false; dlg.classList.toggle('menuoff', menuOff);
     dlg.classList.toggle('pickz', mode==='pick' && !editing);
     const occ = occupancy(), total = doc.list.length;
     let used = 0; for (const p of doc.list) if (occ.has(key(p.l))) used++;
