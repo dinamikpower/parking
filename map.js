@@ -62,6 +62,8 @@ const CSS = `
 .mp-sheet .plate{font-size:20px}
 .mp-sheet .m{color:var(--muted);font-size:14px;margin-top:6px}
 .mp-foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mp-foot{transition:opacity .12s}
+#mapDlg.drw .mp-foot{opacity:0;pointer-events:none}
 .mp-foot .hint{flex:1 1 100%;font-size:13px;color:var(--muted)}
 .mp-foot label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .mp-foot input[type=range]{width:120px;padding:0}
@@ -407,6 +409,7 @@ export function initMap(ctx){
   function drawStart(e){
     const q = pointPct(e.clientX, e.clientY);
     if (q.x<0 || q.x>100 || q.y<0 || q.y>100) return;
+    dlg.classList.add('drw');
     drawing = { type:tool, x0:clampPct(q.x), y0:clampPct(q.y), x1:null, y1:null, pts:[[+clampPct(q.x).toFixed(2), +clampPct(q.y).toFixed(2)]], el:null };
   }
   function drawMove(e){
@@ -481,7 +484,9 @@ export function initMap(ctx){
     const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId); if (!p) return;
     if (ptrs.size>0){ moved = true; pinch = null; return; }
     pinch = null;
+    dlg.classList.remove('drw');
     if (cancelled) { dragSpot = null; if (drawing){ drawing.el?.remove(); drawing = null; } return; }
+    dlg.classList.remove('drw');
     if (drawing){ if (moved) drawEnd(); else drawing = null; dragSpot = null; return; }
     if (!moved) tap(p.target, e);
     else if (dragSpot!=null){ undo.push(null); scheduleSave(); }      // μετακίνηση θέσης
