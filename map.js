@@ -489,14 +489,28 @@ export function initMap(ctx){
     }
   }
 
+  // Παρατεταμένο πάτημα (~0,45 δευτ.) σε σημείο του χάρτη → γρήγορες επιλογές (θέση, σχέδιο ή επεξεργασία σχήματος)
+  let lpTimer = null, lp = false;
+  const clearLp = () => { clearTimeout(lpTimer); lpTimer = null; };
   vp.addEventListener('pointerdown', e => {
     if (!cmenu.hidden) closeCtx();
+    clearLp(); lp = false;
     if (e.target.closest('.mp-empty')) return;
     vp.setPointerCapture(e.pointerId);
     ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY, sx:e.clientX, sy:e.clientY, target:e.target });
     if (ptrs.size===1){
       moved = false; drawing = null; dragSpot = null;
       if (isDrawTool()) drawStart(e);
+      else if (editing && !pend && !e.target.closest?.('.spot')){
+        const cx0 = e.clientX, cy0 = e.clientY, tg = e.target;
+        lpTimer = setTimeout(() => {
+          lpTimer = null; if (moved || ptrs.size!==1) return;
+          lp = true; navigator.vibrate?.(30);
+          const shEl = tg.closest?.('[data-si]'), q = pointPct(cx0, cy0), fe = { clientX:cx0, clientY:cy0 };
+          if (shEl) shapeMenu(+shEl.dataset.si, fe);
+          else if (q.x>=0 && q.x<=100 && q.y>=0 && q.y<=100) emptyMenu(+q.x.toFixed(2), +q.y.toFixed(2), fe);
+        }, 450);
+      }
       else { const sp = e.target.closest?.('.spot'); if (editing && sp && !pend) dragSpot = +sp.dataset.i; }
     }
     if (ptrs.size===2){ moved = true; dragSpot = null; pinch = null; if (drawing){ drawing.el?.remove(); drawing = null; } }   // δύο δάχτυλα = zoom/μετακίνηση
@@ -510,7 +524,7 @@ export function initMap(ctx){
       pinch = { d, c }; return;
     }
     if (!moved && Math.hypot(e.clientX-p.sx, e.clientY-p.sy) <= 6) return;
-    moved = true;
+    moved = true; clearLp();
     if (drawing){ drawMove(e); return; }
     if (dragSpot!=null){
       const q = pointPct(e.clientX, e.clientY), sp = doc.list[dragSpot];
@@ -520,12 +534,14 @@ export function initMap(ctx){
   });
   function endPtr(e, cancelled){
     const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId); if (!p) return;
+    clearLp();
     if (ptrs.size>0){ moved = true; pinch = null; return; }
     pinch = null;
     dlg.classList.remove('drw');
     if (cancelled) { dragSpot = null; if (drawing){ drawing.el?.remove(); drawing = null; } return; }
     dlg.classList.remove('drw');
     if (drawing){ if (moved) drawEnd(); else drawing = null; dragSpot = null; return; }
+    if (lp){ lp = false; dragSpot = null; return; }
     if (!moved) tap(p.target, e);
     else if (dragSpot!=null){ undo.push(null); scheduleSave(); }      // μετακίνηση θέσης
     dragSpot = null;
@@ -545,8 +561,7 @@ export function initMap(ctx){
       const shEl = target.closest?.('[data-si]');
       if (shEl) return shapeMenu(+shEl.dataset.si, e);
       const q = pointPct(e.clientX, e.clientY);
-      if (q.x<0||q.x>100||q.y<0||q.y>100) return closeCtx();
-      return emptyMenu(+q.x.toFixed(2), +q.y.toFixed(2), e);
+      return closeCtx();
     }
     closeSheet();
   }
@@ -774,7 +789,7 @@ export function initMap(ctx){
         foot.innerHTML = `<div class="hint">${msg}</div>${pend?.k==='poly' ? '<button class="btn primary" data-a="pclose">⬠ Κλείσιμο περιοχής</button><button class="btn" data-a="pline">〰 Γραμμή</button>' : ''}${pend ? '<button class="btn" data-a="pundo">↶ Πίσω</button>' : ''}<button class="btn" data-a="pcancel">✕ Ακύρωση</button>`;
         return;
       }
-      foot.innerHTML = `<div class="hint">Σύρε: κίνηση χάρτη · πάτα σε κενό σημείο: θέση/σχέδιο · πάτα σχήμα: όνομα, χρώμα, διαγραφή</div>
+      foot.innerHTML = `<div class="hint">Σύρε: κίνηση χάρτη · κράτα πατημένο σε σημείο: θέση ή σχέδιο · πάτα σχήμα: όνομα, χρώμα, διαγραφή</div>
         <button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="fmore">⚙ ${fmore ? 'Λιγότερα' : 'Ρυθμίσεις'}</button><button class="btn primary" data-a="done" style="margin-left:auto">Τέλος</button>
         ${fmore ? `<div class="mp-more"><button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
         <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>

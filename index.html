@@ -159,7 +159,7 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=22';
+import { initMap } from './map.js?v=23';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
