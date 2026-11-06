@@ -12,8 +12,12 @@ const CSS = `
 .mp-x{background:#334155;color:#fff;border:0;border-radius:10px;width:40px;height:40px;font-size:18px}
 .mp-title{font-weight:700;font-size:16px;flex:1}
 .mp-title small{display:block;font-weight:500;font-size:12px;color:#cbd5e1}
-.mp-zones{display:flex;gap:6px;overflow-x:auto;padding-top:8px;scrollbar-width:none}
-.mp-zones::-webkit-scrollbar{display:none}
+.mp-zones,.mp-maps{display:flex;gap:6px;overflow-x:auto;padding-top:8px;scrollbar-width:none}
+.mp-zones::-webkit-scrollbar,.mp-maps::-webkit-scrollbar{display:none}
+.mp-maps[hidden]{display:none}
+.mp-m{flex:none;padding:7px 14px;border-radius:10px;border:1px solid #64748b;background:#1e293b;color:#e2e8f0;font-size:14px;font-weight:700}
+.mp-m.on{background:#0ea5e9;border-color:#0ea5e9;color:#fff}
+.mp-m.add{border-style:dashed;background:transparent}
 .mp-z{flex:none;padding:6px 12px;border-radius:99px;border:1px solid #475569;background:transparent;color:#e2e8f0;font-size:14px;font-weight:600}
 .mp-z.on{background:#2563eb;border-color:#2563eb;color:#fff}
 .mp-vp{position:relative;flex:1;overflow:hidden;background:#1e293b;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -84,7 +88,7 @@ export function initMap(ctx){
 
   const dlg = document.createElement('dialog'); dlg.id = 'mapDlg';
   dlg.innerHTML = `
-    <div class="mp-head"><div class="mp-top"><button class="mp-x" data-a="close" aria-label="Κλείσιμο">✕</button><div class="mp-title"></div></div><div class="mp-zones"></div></div>
+    <div class="mp-head"><div class="mp-top"><button class="mp-x" data-a="close" aria-label="Κλείσιμο">✕</button><div class="mp-title"></div></div><div class="mp-maps"></div><div class="mp-zones"></div></div>
     <div class="mp-vp"><div class="mp-stage"><img class="mp-img" alt=""><div class="mp-shapes"></div><div class="mp-spots"></div></div><div class="mp-empty" hidden></div></div>
     <div class="mp-sheet" hidden></div>
     <div class="mp-foot"></div>
@@ -92,7 +96,7 @@ export function initMap(ctx){
   document.body.append(dlg);
   const $ = s => dlg.querySelector(s);
   const vp = $('.mp-vp'), stage = $('.mp-stage'), img = $('.mp-img'), spotsEl = $('.mp-spots'), shapesEl = $('.mp-shapes');
-  const sheet = $('.mp-sheet'), foot = $('.mp-foot'), titleEl = $('.mp-title'), zonesEl = $('.mp-zones'), emptyEl = $('.mp-empty'), fileEl = $('.mp-file');
+  const sheet = $('.mp-sheet'), foot = $('.mp-foot'), titleEl = $('.mp-title'), zonesEl = $('.mp-zones'), mapsEl = $('.mp-maps'), emptyEl = $('.mp-empty'), fileEl = $('.mp-file');
 
   /* ---------- κατάσταση ---------- */
   let mapImg = null;                          // {image,w,h}
@@ -103,25 +107,46 @@ export function initMap(ctx){
   let mode = 'browse', editing = false, pickCb = null;
   let zoneFilter = null, focusKey = null, selected = null, startLabel = null, lastLabel = '', undo = [];
   let s = 1, tx = 0, ty = 0, baseW = 0, baseH = 0, saveT = null;
+  // πολλοί χάρτες
+  let maps = [], curId = null, subbedId, allSpots = {}, unsubMap = null, unsubSpots = {}, loaded = false, afterLoad = null;
+  try { curId = localStorage.getItem('parking-map-cur') || null; } catch {}
+  const curMap = () => maps.find(m => m.id===curId);
 
   const key = plateKey;
   const spotKeys = () => new Set(doc.list.map(p => key(p.l)));
   function occupancy(){
     const m = new Map();
-    for (const v of getCars()) if (!v.exitAt){ const k = key(v.location); if (!m.has(k)) m.set(k, []); m.get(k).push(v); }
+    for (const v of getCars()) if (!v.exitAt && !(v.mapId && v.mapId!==curId)){ const k = key(v.location); if (!m.has(k)) m.set(k, []); m.get(k).push(v); }
     return m;
   }
 
   /* ---------- δεδομένα ---------- */
   const cloneRemote = () => ({ list: remote.list.map(p=>({...p})), size: remote.size, shapes: JSON.parse(JSON.stringify(remote.shapes)) });
-  store.subscribeMap(({ img:i, spots, shapes }) => {
-    mapImg = i && i.image ? i : null;
-    remote = { list: (spots?.list)||[], size: spots?.size||3.2, shapes: (shapes?.list)||[] };
-    if (!editing) doc = cloneRemote();
+  function useMap(id){
+    subbedId = id; curId = id; try { id ? localStorage.setItem('parking-map-cur', id) : localStorage.removeItem('parking-map-cur'); } catch {}
+    unsubMap?.(); unsubMap = null; loaded = !id;
+    mapImg = null; remote = { list:[], size:3.2, shapes:[] }; doc = cloneRemote(); zoneFilter = null; selected = null;
+    if (id) unsubMap = store.subscribeMap(id, ({ img:i, spots, shapes }) => {
+      mapImg = i && i.image ? i : null;
+      remote = { list: (spots?.list)||[], size: spots?.size||3.2, shapes: (shapes?.list)||[] };
+      if (!editing) doc = cloneRemote();
+      loaded = true;
+      if (dlg.open){ render(); if (afterLoad){ const f = afterLoad; afterLoad = null; requestAnimationFrame(f); } }
+      onChange?.();
+    });
+    if (dlg.open) render();
+  }
+  store.subscribeMaps(list => {
+    maps = list || [];
+    const want = maps.some(m => m.id===curId) ? curId : (maps[0]?.id || null);
+    if (want !== subbedId) useMap(want);
+    // οι θέσεις όλων των χαρτών (μικρά έγγραφα) για το κουμπί «Στον χάρτη»
+    for (const m of maps) if (!unsubSpots[m.id]) unsubSpots[m.id] = store.subscribeSpots(m.id, l => { allSpots[m.id] = l; onChange?.(); });
+    for (const id of Object.keys(unsubSpots)) if (!maps.some(m => m.id===id)){ unsubSpots[id](); delete unsubSpots[id]; delete allSpots[id]; }
     if (dlg.open) render();
     onChange?.();
   });
-  const saveAll = () => Promise.all([ store.saveSpots({ list:doc.list, size:doc.size }), store.saveShapes({ list:doc.shapes }) ]);
+  const saveAll = () => curId ? Promise.all([ store.saveSpots(curId, { list:doc.list, size:doc.size }), store.saveShapes(curId, { list:doc.shapes }) ]) : Promise.resolve();
   function scheduleSave(){
     clearTimeout(saveT);
     saveT = setTimeout(()=>saveAll().catch(e=>toast('Σφάλμα αποθήκευσης: '+e.message)), 500);
@@ -274,7 +299,7 @@ export function initMap(ctx){
     }
     renderSheet(); render();
   }
-  function finishPick(label){ const cb = pickCb; close(); cb?.(label); }
+  function finishPick(label){ const cb = pickCb, id = curId; close(); cb?.(label, id); }
   function closeSheet(){ selected = null; sheet.hidden = true; render(); }
 
   function renderSheet(){
@@ -312,11 +337,23 @@ export function initMap(ctx){
     if (a==='tool'){ tool = b.dataset.t; startLabel = null; closeSheet(); return; }
     if (a==='color'){ color = b.dataset.c; renderFoot(); return; }
     if (a==='pickimg' || a==='img') return fileEl.click();
+    if (a==='selmap'){ if (b.dataset.id===curId) return; if (editing) return toast('Πάτα πρώτα «Τέλος»'); closeSheet(); useMap(b.dataset.id); afterLoad = () => fitAll(); render(); return; }
+    if (a==='newmap'){
+      const name = (prompt('Όνομα νέου χάρτη (π.χ. Υπόγειο, Πάρκινγκ 2):', 'Χάρτης '+(maps.length+1))||'').trim(); if (!name) return;
+      const id = 'm'+Date.now().toString(36); maps = [...maps, { id, name }];
+      try { await store.setMaps(maps); } catch(err){ maps = maps.filter(m=>m.id!==id); return toast('Σφάλμα: '+err.message); }
+      closeSheet(); useMap(id); afterLoad = () => fitAll(); toast('Ο χάρτης «'+name+'» δημιουργήθηκε — ανέβασε εικόνα'); render(); return;
+    }
+    if (a==='renamemap'){
+      const m = curMap(); if (!m) return; const name = (prompt('Νέο όνομα χάρτη:', m.name)||'').trim(); if (!name) return;
+      maps = maps.map(x => x.id===m.id ? { ...x, name } : x); try { await store.setMaps(maps); } catch(err){ return toast('Σφάλμα: '+err.message); } render(); return;
+    }
     if (a==='clearmap'){
-      if (!confirm('Να διαγραφεί ΟΛΟΣ ο χάρτης (φωτογραφία, θέσεις και σχέδια);\nΔεν αναιρείται και φεύγει για όλους τους υπαλλήλους.')) return;
-      clearTimeout(saveT);
-      try { await store.clearMap(); } catch(err){ return toast('Σφάλμα διαγραφής: '+err.message); }
-      editing = false; startLabel = null; undo = []; selected = null; mapImg = null; remote = { list:[], size:3.2, shapes:[] }; doc = cloneRemote();
+      const m = curMap(); if (!m) return;
+      if (!confirm('Να διαγραφεί ο χάρτης «'+m.name+'» (φωτογραφία, θέσεις και σχέδια);\nΔεν αναιρείται και φεύγει για όλους τους υπαλλήλους.\nΤα οχήματα δεν επηρεάζονται.')) return;
+      clearTimeout(saveT); const id = m.id;
+      try { await store.deleteMapData(id); maps = maps.filter(x => x.id!==id); await store.setMaps(maps); } catch(err){ return toast('Σφάλμα διαγραφής: '+err.message); }
+      editing = false; startLabel = null; undo = []; useMap(maps[0]?.id || null); afterLoad = () => fitAll();
       closeSheet(); renderAll(); onChange?.(); toast('Ο χάρτης διαγράφηκε'); return;
     }
     if (a==='zone'){ zoneFilter = b.dataset.z || null; fitZone(); render(); return; }
@@ -324,7 +361,7 @@ export function initMap(ctx){
     if (a==='undo'){ while (undo.length && undo[undo.length-1]===null) undo.pop(); const prev = undo.pop(); if (prev){ const o = JSON.parse(prev); doc.list = o.list; doc.shapes = o.shapes; scheduleSave(); closeSheet(); } return; }
     if (a==='rename'){ const v = $('#mpLab').value.trim(); if (!v) return; const dup = doc.list.some((p,i)=>i!==selected && key(p.l)===key(v)); if (dup) return toast('Υπάρχει ήδη θέση '+v); mutate(()=>{ doc.list[selected].l = v; }); lastLabel = v; closeSheet(); return; }
     if (a==='del'){ mutate(()=>{ doc.list.splice(selected,1); }); closeSheet(); return; }
-    if (a==='newhere'){ const l = doc.list[selected].l; close(); openNewCarAt(l); return; }
+    if (a==='newhere'){ const l = doc.list[selected].l, id = curId; close(); openNewCarAt(l, id); return; }
     if (a==='exit'){ await exitCar(b.dataset.id); renderSheet(); return; }
     if (a==='usepick'){ finishPick(doc.list[selected].l); return; }
   });
@@ -332,9 +369,9 @@ export function initMap(ctx){
     if (e.target.matches('.mp-size')){ doc.size = +e.target.value; layout(); scheduleSave(); }
   });
   fileEl.addEventListener('change', async e => {
-    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    const f = e.target.files[0]; e.target.value = ''; if (!f || !curId) return;
     if (mapImg && doc.list.length && !confirm('Αν αλλάξεις εικόνα, οι θέσεις μένουν στα ίδια σημεία. Συνέχεια;')) return;
-    try { toast('Επεξεργασία εικόνας…'); const o = await compressImage(f); await store.saveImage(o); editing = true; mode='browse'; toast('Η εικόνα αποθηκεύτηκε'); setTimeout(()=>{ renderAll(); fitAll(); }, 150); }
+    try { toast('Επεξεργασία εικόνας…'); const o = await compressImage(f); await store.saveImage(curId, o); editing = true; mode='browse'; toast('Η εικόνα αποθηκεύτηκε'); setTimeout(()=>{ renderAll(); fitAll(); }, 150); }
     catch(err){ toast('Σφάλμα εικόνας: '+err.message); }
   });
   img.addEventListener('load', () => { layout(); if (dlg.open) fitAll(); });
@@ -372,7 +409,7 @@ export function initMap(ctx){
       foot.innerHTML = `<div class="hint">${HINT}</div>
         <div class="mp-tools">${TOOLS.map(([t,i,n])=>`<button class="mp-tool ${tool===t?'on':''}" data-a="tool" data-t="${t}">${i} ${n}</button>`).join('')}</div>
         ${(tool==='rect'||tool==='pen') ? `<div class="mp-tools">${COLORS.map(c=>`<button class="mp-sw ${c===color?'on':''}" data-a="color" data-c="${c}" style="background:${c}" aria-label="χρώμα"></button>`).join('')}</div>` : ''}
-        ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
+        ${tool==='spot' ? '<button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>' : ''}<button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
         <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
         <button class="btn primary" data-a="done" style="margin-left:auto">Τέλος</button>`;
     } else if (mode==='pick'){
@@ -396,12 +433,17 @@ export function initMap(ctx){
     dlg.classList.toggle('erase', editing && tool==='erase');
     const occ = occupancy(), total = doc.list.length;
     let used = 0; for (const p of doc.list) if (occ.has(key(p.l))) used++;
-    titleEl.innerHTML = `Χάρτης παρκινγκ<small>${total ? `${total-used} ελεύθερες από ${total}` : 'δεν έχουν οριστεί θέσεις'}</small>`;
+    titleEl.innerHTML = `${esc(curMap()?.name || 'Χάρτης παρκινγκ')}<small>${total ? `${total-used} ελεύθερες από ${total}` : 'δεν έχουν οριστεί θέσεις'}</small>`;
+    mapsEl.hidden = editing;
+    mapsEl.innerHTML = editing ? '' : maps.map(m => `<button class="mp-m ${m.id===curId?'on':''}" data-a="selmap" data-id="${esc(m.id)}">${esc(m.name)}</button>`).join('') + (mode==='pick' ? '' : '<button class="mp-m add" data-a="newmap">＋ Νέος χάρτης</button>');
     const zs = [...new Set(doc.list.map(p=>zoneOf(p.l)))].sort();
     zonesEl.innerHTML = zs.length>1 ? [`<button class="mp-z ${!zoneFilter?'on':''}" data-a="zone" data-z="">Όλες</button>`, ...zs.map(z=>`<button class="mp-z ${zoneFilter===z?'on':''}" data-a="zone" data-z="${esc(z)}">${esc(z)}</button>`)].join('') : '';
     if (!mapImg){
       img.removeAttribute('src'); stage.style.display = 'none'; emptyEl.hidden = false;
-      emptyEl.innerHTML = `<div style="font-size:42px">🗺️</div><div>Δεν υπάρχει χάρτης ακόμα.<br>Ανέβασε μια φωτογραφία ή σχέδιο του παρκινγκ (π.χ. από ψηλά ή κάτοψη) και βάλε πάνω της τις θέσεις.</div><button class="btn primary" data-a="pickimg">📷 Ανέβασμα εικόνας</button>`;
+      emptyEl.innerHTML = !curId
+        ? `<div style="font-size:42px">🗺️</div><div>Δεν υπάρχει χάρτης ακόμα.<br>Φτιάξε έναν και ανέβασε φωτογραφία ή σχέδιο του παρκινγκ.</div><button class="btn primary" data-a="newmap">＋ Νέος χάρτης</button>`
+        : !loaded ? `<div>Φόρτωση…</div>`
+        : `<div style="font-size:42px">🗺️</div><div>Ο χάρτης «${esc(curMap()?.name||'')}» δεν έχει εικόνα ακόμα.<br>Ανέβασε μια φωτογραφία ή σχέδιο του παρκινγκ (π.χ. από ψηλά ή κάτοψη) και βάλε πάνω της τις θέσεις.</div><button class="btn primary" data-a="pickimg">📷 Ανέβασμα εικόνας</button>`;
     } else {
       emptyEl.hidden = true; stage.style.display = '';
       if (img.getAttribute('src') !== mapImg.image) img.src = mapImg.image;
@@ -419,22 +461,35 @@ export function initMap(ctx){
   function renderAll(){ render(); if (selected!=null) renderSheet(); }
 
   /* ---------- δημόσιο API ---------- */
+  function findMapFor(label, mapId){
+    if (mapId && maps.some(m => m.id===mapId)) return mapId;
+    if (label){
+      const k = key(label), has = id => (allSpots[id]||[]).some(p => key(p.l)===k);
+      if (curId && has(curId)) return curId;
+      const m = maps.find(m => has(m.id)); if (m) return m.id;
+    }
+    return curId;
+  }
   function open(o = {}){
     mode = o.mode || 'browse'; pickCb = o.onPick || null; editing = false; selected = null; zoneFilter = null; startLabel = null; undo = []; tool = 'spot'; drawing = null;
     focusKey = o.focus ? key(o.focus) : null;
+    const target = o.focus ? findMapFor(o.focus, o.mapId) : (o.mapId && maps.some(m => m.id===o.mapId) ? o.mapId : curId);
+    const switched = target && target!==curId;
+    if (switched) useMap(target);
     doc = cloneRemote();
     sheet.hidden = true; if (!dlg.open) dlg.showModal();
     render();
-    requestAnimationFrame(() => {
+    const settle = () => {
       fitAll();
       if (focusKey){
         const i = doc.list.findIndex(p => key(p.l)===focusKey);
         if (i>=0){ const p = doc.list[i]; fitBox(p.x,p.y,p.x,p.y,3.5); selected = i; renderSheet(); render(); }
         else toast('Η θέση δεν υπάρχει στον χάρτη');
       }
-    });
+    };
+    if (switched && !loaded) afterLoad = settle; else requestAnimationFrame(settle);
   }
   function close(){ if (dlg.open) dlg.close(); }
   function refresh(){ if (dlg.open){ renderAll(); } }
-  return { open, close, refresh, hasSpot: label => !!label && remote.list.some(p => key(p.l)===key(label)), spotCount: () => remote.list.length };
+  return { open, close, refresh, hasSpot: (label, mapId) => { if (!label) return false; const k = key(label), ids = mapId && allSpots[mapId] ? [mapId] : Object.keys(allSpots); return ids.some(id => allSpots[id].some(p => key(p.l)===k)); }, spotCount: () => remote.list.length };
 }

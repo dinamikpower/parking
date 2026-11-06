@@ -162,6 +162,8 @@ export function plateKey(s){
 window.__plateKey = plateKey;
 
 /* ---------- Επίπεδο δεδομένων (Firebase ή τοπικό) ---------- */
+// Ονόματα εγγράφων ανά χάρτη (το «main» κρατά τα παλιά ονόματα ώστε να μη χαθεί ο υπάρχων χάρτης)
+const mapDocNames = id => id==='main' ? { img:'main', spots:'spots', shapes:'shapes' } : { img:id, spots:id+'_spots', shapes:id+'_shapes' };
 let store;
 if (LIVE) {
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
@@ -178,18 +180,25 @@ if (LIVE) {
     async update(id,p){ await fs.updateDoc(fs.doc(db,'vehicles',id), p); },
     async exit(id){ await fs.updateDoc(fs.doc(db,'vehicles',id), { exitAt: fs.serverTimestamp() }); },
     async remove(id){ await fs.deleteDoc(fs.doc(db,'vehicles',id)); },
-    async clearMap(){ await Promise.all(['main','spots','shapes'].map(n => fs.deleteDoc(fs.doc(db,'maps',n)))); },
-    // Χάρτης: η εικόνα και οι θέσεις σε ξεχωριστά έγγραφα (το όριο του Firestore είναι ~1MB ανά έγγραφο)
-    subscribeMap(cb){
+    // Χάρτες: πολλοί χάρτες. Το «main» κρατά τα παλιά έγγραφα (maps/main, maps/spots, maps/shapes)
+    // και οι υπόλοιποι maps/<id>, maps/<id>_spots, maps/<id>_shapes. Η λίστα είναι στο maps/index.
+    subscribeMaps(cb){
+      return fs.onSnapshot(fs.doc(db,'maps','index'), s => cb(s.exists() ? (s.data().list||[]) : [{ id:'main', name:'Χάρτης 1' }]));
+    },
+    async setMaps(list){ await fs.setDoc(fs.doc(db,'maps','index'), { list, updatedAt: Date.now() }); },
+    subscribeMap(id, cb){
+      const n = mapDocNames(id);
       let img = null, spots = null, shapes = null; const emit = () => cb({ img, spots, shapes });
-      const u1 = fs.onSnapshot(fs.doc(db,'maps','main'),   s => { img    = s.exists() ? s.data() : null; emit(); });
-      const u2 = fs.onSnapshot(fs.doc(db,'maps','spots'),  s => { spots  = s.exists() ? s.data() : null; emit(); });
-      const u3 = fs.onSnapshot(fs.doc(db,'maps','shapes'), s => { shapes = s.exists() ? s.data() : null; emit(); });
+      const u1 = fs.onSnapshot(fs.doc(db,'maps',n.img),    s => { img    = s.exists() ? s.data() : null; emit(); });
+      const u2 = fs.onSnapshot(fs.doc(db,'maps',n.spots),  s => { spots  = s.exists() ? s.data() : null; emit(); });
+      const u3 = fs.onSnapshot(fs.doc(db,'maps',n.shapes), s => { shapes = s.exists() ? s.data() : null; emit(); });
       return () => { u1(); u2(); u3(); };
     },
-    async saveImage(o){ await fs.setDoc(fs.doc(db,'maps','main'),   { ...o, updatedAt: Date.now() }); },
-    async saveSpots(o){ await fs.setDoc(fs.doc(db,'maps','spots'),  { ...o, updatedAt: Date.now() }); },
-    async saveShapes(o){ await fs.setDoc(fs.doc(db,'maps','shapes'), { ...o, updatedAt: Date.now() }); },
+    subscribeSpots(id, cb){ return fs.onSnapshot(fs.doc(db,'maps',mapDocNames(id).spots), s => cb(s.exists() ? (s.data().list||[]) : [])); },
+    async saveImage(id,o){ await fs.setDoc(fs.doc(db,'maps',mapDocNames(id).img),    { ...o, updatedAt: Date.now() }); },
+    async saveSpots(id,o){ await fs.setDoc(fs.doc(db,'maps',mapDocNames(id).spots),  { ...o, updatedAt: Date.now() }); },
+    async saveShapes(id,o){ await fs.setDoc(fs.doc(db,'maps',mapDocNames(id).shapes), { ...o, updatedAt: Date.now() }); },
+    async deleteMapData(id){ const n = mapDocNames(id); await Promise.all([n.img,n.spots,n.shapes].map(x => fs.deleteDoc(fs.doc(db,'maps',x)))); },
   };
 } else {
   const K='parking-demo-v1'; const subs=new Set(); const mapSubs=new Set();
@@ -202,25 +211,32 @@ if (LIVE) {
     async update(id,p){ save(load().map(x=>x.id===id?{...x,...p}:x)); },
     async exit(id){ save(load().map(x=>x.id===id?{...x,exitAt:Date.now()}:x)); },
     async remove(id){ save(load().filter(x=>x.id!==id)); },
-    async clearMap(){ ['img','spots','shapes'].forEach(k=>localStorage.removeItem('parking-map-'+k)); mapSubs.forEach(f=>f()); },
-    subscribeMap(cb){
-      const emit=()=>{ let img=null,spots=null,shapes=null;
-        try{img=JSON.parse(localStorage.getItem('parking-map-img'))}catch{}
-        try{spots=JSON.parse(localStorage.getItem('parking-map-spots'))}catch{}
-        try{shapes=JSON.parse(localStorage.getItem('parking-map-shapes'))}catch{}
-        cb({img,spots,shapes}); };
+    subscribeMaps(cb){
+      const emit=()=>{ let l=null; try{l=JSON.parse(localStorage.getItem('parking-maps-index'))}catch{} cb(l || [{ id:'main', name:'Χάρτης 1' }]); };
       mapSubs.add(emit); emit(); return ()=>mapSubs.delete(emit);
     },
-    async saveImage(o){ localStorage.setItem('parking-map-img',JSON.stringify(o)); mapSubs.forEach(f=>f()); },
-    async saveSpots(o){ localStorage.setItem('parking-map-spots',JSON.stringify(o)); mapSubs.forEach(f=>f()); },
-    async saveShapes(o){ localStorage.setItem('parking-map-shapes',JSON.stringify(o)); mapSubs.forEach(f=>f()); },
+    async setMaps(list){ localStorage.setItem('parking-maps-index',JSON.stringify(list)); mapSubs.forEach(f=>f()); },
+    subscribeMap(id, cb){
+      const n = mapDocNames(id), rd = k => { try{return JSON.parse(localStorage.getItem('parking-map-'+k))}catch{return null} };
+      const emit=()=>cb({ img:rd(n.img), spots:rd(n.spots), shapes:rd(n.shapes) });
+      mapSubs.add(emit); emit(); return ()=>mapSubs.delete(emit);
+    },
+    subscribeSpots(id, cb){
+      const n = mapDocNames(id);
+      const emit=()=>{ let s=null; try{s=JSON.parse(localStorage.getItem('parking-map-'+n.spots))}catch{} cb((s&&s.list)||[]); };
+      mapSubs.add(emit); emit(); return ()=>mapSubs.delete(emit);
+    },
+    async saveImage(id,o){ localStorage.setItem('parking-map-'+mapDocNames(id).img,JSON.stringify(o)); mapSubs.forEach(f=>f()); },
+    async saveSpots(id,o){ localStorage.setItem('parking-map-'+mapDocNames(id).spots,JSON.stringify(o)); mapSubs.forEach(f=>f()); },
+    async saveShapes(id,o){ localStorage.setItem('parking-map-'+mapDocNames(id).shapes,JSON.stringify(o)); mapSubs.forEach(f=>f()); },
+    async deleteMapData(id){ const n = mapDocNames(id); [n.img,n.spots,n.shapes].forEach(x=>localStorage.removeItem('parking-map-'+x)); mapSubs.forEach(f=>f()); },
   };
 }
 
 /* ---------- Κατάσταση ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let all = [], tab = 'active', editing = null, mapApi = null;
+let all = [], tab = 'active', editing = null, mapApi = null, pickedMap = null;   // pickedMap: ο χάρτης απ' όπου επιλέχθηκε η θέση
 
 const modeEl = $('#mode');
 modeEl.textContent = LIVE ? 'live' : 'demo';
@@ -251,7 +267,7 @@ function carCard(v){
       ${v.note?`<span>📝 ${esc(v.note)}</span>`:''}
       ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}
     </div>
-    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}<button class="btn grow" data-act="edit">Επεξεργασία</button><button class="btn go grow" data-act="exit">Έφυγε ✓</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>`:
+    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}<button class="btn grow" data-act="edit">Επεξεργασία</button><button class="btn go grow" data-act="exit">Έφυγε ✓</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>`:
       `<div class="actions"><button class="btn grow" data-act="again">Ξανά στο παρκινγκ</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>`}
   </div>`;
 }
@@ -289,6 +305,7 @@ function openForm(v, prefillPlate){
   $('#dlgTitle').textContent = v?.id && !v.__again ? 'Επεξεργασία' : 'Νέο όχημα';
   $('#fPlate').value = v?.plate || prefillPlate || '';
   $('#fLoc').value = v?.__again ? '' : (v?.location || '');
+  pickedMap = v?.__again ? null : (v?.mapId || null);
   $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = v?.phone || ''; $('#fNote').value = v?.note || '';
   if (v?.__again) editing = null;
   checkDup(); renderChips(); dlg.showModal();
@@ -304,7 +321,8 @@ function renderChips(){
   const seen = [...new Set(all.map(v=>v.location).filter(Boolean))].slice(0,8);
   $('#chips').innerHTML = seen.map(s=>`<button type="button" class="chip">${esc(s)}</button>`).join('');
 }
-$('#chips').addEventListener('click',e=>{ if(e.target.classList.contains('chip')) $('#fLoc').value = e.target.textContent; });
+$('#chips').addEventListener('click',e=>{ if(e.target.classList.contains('chip')){ $('#fLoc').value = e.target.textContent; pickedMap = null; } });
+$('#fLoc').addEventListener('input',()=>{ pickedMap = null; });
 $('#fPlate').addEventListener('input',checkDup);
 $('#fCancel').onclick = ()=>dlg.close();
 
@@ -312,7 +330,7 @@ $('#form').addEventListener('submit', async e=>{
   e.preventDefault();
   const plate = $('#fPlate').value.trim().toUpperCase();
   const data = { plate, plateKey: plateKey(plate), location: $('#fLoc').value.trim(),
-    keyNo: $('#fKey').value.trim(), phone: $('#fPhone').value.trim(), note: $('#fNote').value.trim() };
+    keyNo: $('#fKey').value.trim(), phone: $('#fPhone').value.trim(), note: $('#fNote').value.trim(), mapId: pickedMap || null };
   if (!data.plateKey || !data.location) return;
   try {
     if (editing?.id) await store.update(editing.id, data);
@@ -550,7 +568,7 @@ $('#list').addEventListener('click', async e=>{
   if (e.target.id==='addFromSearch'){ ensureStaff(); return openForm(null, $('#q').value.trim()); }
   const btn = e.target.closest('[data-act]'); if(!btn) return;
   const v = all.find(x=>x.id===btn.closest('.card').dataset.id); if(!v) return;
-  if (btn.dataset.act==='map') mapApi.open({ mode:'browse', focus: v.location });
+  if (btn.dataset.act==='map') mapApi.open({ mode:'browse', focus: v.location, mapId: v.mapId });
   if (btn.dataset.act==='edit') openForm(v);
   if (btn.dataset.act==='again'){ ensureStaff(); openForm({...v, __again:true}); }
   if (btn.dataset.act==='del' && confirm(`Να διαγραφεί οριστικά το ${v.plate} από τη λίστα και το ιστορικό;`)) { try { await store.remove(v.id); toast('Το όχημα διαγράφηκε'); } catch(err){ toast('Σφάλμα διαγραφής: '+err.message); } }
@@ -561,7 +579,7 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   if (t.dataset.tab==='map') return mapApi.open({ mode:'browse' });
   tab=t.dataset.tab; $('#q').value=''; render();
 });
-$('#mapF').onclick = ()=>mapApi.open({ mode:'pick', onPick: label=>{ $('#fLoc').value = label; } });
+$('#mapF').onclick = ()=>mapApi.open({ mode:'pick', onPick: (label, mapId)=>{ $('#fLoc').value = label; pickedMap = mapId || null; } });
 
 let tt; function toast(m){ document.querySelector('.toast')?.remove(); const d=document.createElement('div'); d.className='toast'; d.textContent=m; document.body.append(d); clearTimeout(tt); tt=setTimeout(()=>d.remove(),2200); }
 
@@ -569,7 +587,7 @@ mapApi = initMap({
   store, plateKey, esc, fmtT, fmtDur, toast,
   getCars: () => all,
   onChange: () => render(),                       // όταν αλλάζουν οι θέσεις, ενημέρωσε τα κουμπιά «Στον χάρτη»
-  openNewCarAt: label => { ensureStaff(); openForm(null, ''); $('#fLoc').value = label; $('#fPlate').focus(); },
+  openNewCarAt: (label, mapId) => { ensureStaff(); openForm(null, ''); $('#fLoc').value = label; pickedMap = mapId || null; $('#fPlate').focus(); },
   exitCar: async id => { const v = all.find(x=>x.id===id); if (v && confirm(`Έφυγε το ${v.plate};`)){ await store.exit(id); toast('Καταγράφηκε έξοδος'); } },
 });
 store.subscribe(rows => { all = rows.map(r=>({...r, plateKey: r.plateKey || plateKey(r.plate)})); render(); mapApi.refresh(); });
