@@ -2,7 +2,7 @@
    - Ανεβάζεις φωτογραφία ή σχέδιο του χώρου και βάζεις τις θέσεις με πάτημα.
    - Η ζώνη προκύπτει από τα γράμματα της ονομασίας (Α12 → ζώνη Α).
    - Ένα όχημα «κάθεται» σε θέση όταν το πεδίο Θέση της καταχώρησής του είναι ίδιο με την ονομασία της θέσης. */
-import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=3';
+import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=4';
 
 const CSS = `
 #mapDlg{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;border-radius:0;padding:0;background:var(--bg);color:var(--text);overflow:hidden}
@@ -981,5 +981,5 @@ export function initMap(ctx){
   }
   function close(){ if (dlg.open) dlg.close(); }
   function refresh(){ if (dlg.open){ renderAll(); } }
-  return { open, close, refresh, hasSpot: (label, mapId) => { if (!label) return false; const k = key(label), ids = mapId && (allSpots[mapId]||allShapes[mapId]) ? [mapId] : Object.keys({...allSpots, ...allShapes}); return ids.some(id => (allSpots[id]||[]).some(p => key(p.l)===k) || (allShapes[id]||[]).some(s => s.n && key(s.n)===k)); }, spotCount: () => remote.list.length };
+  return { open, close, refresh, warm: () => { ensureLive().catch(()=>{}); }, hasSpot: (label, mapId) => { if (!label) return false; const k = key(label), ids = mapId && (allSpots[mapId]||allShapes[mapId]) ? [mapId] : Object.keys({...allSpots, ...allShapes}); return ids.some(id => (allSpots[id]||[]).some(p => key(p.l)===k) || (allShapes[id]||[]).some(s => s.n && key(s.n)===k)); }, spotCount: () => remote.list.length };
 }

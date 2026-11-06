@@ -44,7 +44,11 @@ export { fmtDist };
 export async function createLive(host, h){
   const L = await loadLeaflet();
   const map = L.map(host, { zoomControl:false, attributionControl:true, maxZoom:21, zoomSnap:.5, zoomDelta:.5, doubleClickZoom:true });
-  L.tileLayer(TILE, { maxZoom:21, maxNativeZoom:19, attribution:ATTR }).addTo(map);
+  L.tileLayer(TILE, { maxZoom:21, maxNativeZoom:19, attribution:ATTR, crossOrigin:true, keepBuffer:3, updateWhenIdle:false }).addTo(map);
+  // Θυμάται την τελευταία θέση/ζουμ ώστε ο χάρτης να ανοίγει αμέσως στο σωστό σημείο, χωρίς αναμονή για GPS
+  let saved = null; try { saved = JSON.parse(localStorage.getItem('parking-live-view')); } catch {}
+  map.setView(saved ? [saved.lat, saved.lng] : [37.9838, 23.7275], saved ? saved.z : 16);
+  map.on('moveend', () => { try { const c = map.getCenter(); localStorage.setItem('parking-live-view', JSON.stringify({ lat:+c.lat.toFixed(6), lng:+c.lng.toFixed(6), z:map.getZoom() })); } catch {} });
   map.setView([37.98, 23.73], 17);
   const data = L.layerGroup().addTo(map), over = L.layerGroup().addTo(map);
   let tool = 'pan', me = null, meMarker = null, meCircle = null, watchId = null, target = null, line = null, route = null, lpHeld = false, lpUntil = 0, userMoved = false;

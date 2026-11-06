@@ -168,7 +168,7 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=28';
+import { initMap } from './map.js?v=29';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
@@ -750,6 +750,8 @@ mapApi = initMap({
   openNewCarAt: (label, mapId) => { ensureStaff(); openForm(null, ''); $('#fLoc').value = label; pickedMap = mapId || null; $('#fPlate').focus(); },
   exitCar: async id => { const v = all.find(x=>x.id===id); if (v && confirm(`Έφυγε το ${v.plate};`)){ await store.exit(id); toast('Καταγράφηκε έξοδος'); } },
 });
+// Προφόρτωση του κώδικα του live χάρτη όταν η εφαρμογή είναι ανενεργή, ώστε το άνοιγμα να είναι άμεσο
+(window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => mapApi?.warm?.(), { timeout: 4000 });
 store.subscribe(rows => { all = rows.map(r=>({...r, plateKey: r.plateKey || plateKey(r.plate)})); render(); mapApi.refresh(); });
 setInterval(render, 60000); // ανανέωση διάρκειας
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
