@@ -2,6 +2,7 @@
    - Ανεβάζεις φωτογραφία ή σχέδιο του χώρου και βάζεις τις θέσεις με πάτημα.
    - Η ζώνη προκύπτει από τα γράμματα της ονομασίας (Α12 → ζώνη Α).
    - Ένα όχημα «κάθεται» σε θέση όταν το πεδίο Θέση της καταχώρησής του είναι ίδιο με την ονομασία της θέσης. */
+import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=2';
 
 const CSS = `
 #mapDlg{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;border-radius:0;padding:0;background:var(--bg);color:var(--text);overflow:hidden}
@@ -59,6 +60,9 @@ const CSS = `
 .mp-empty[hidden]{display:none}
 .mp-sheet{flex:none;background:var(--card);border-top:1px solid var(--line);padding:12px 14px;max-height:45%;overflow:auto}
 .mp-sheet[hidden]{display:none}
+.mp-sheet:not([hidden]) ~ .mp-foot{display:none}
+.mp-sheet .btn{padding:9px 12px;font-size:14px}
+.mp-sheet .mp-row{gap:6px;flex-wrap:wrap}
 .mp-sheet .plate{font-size:20px}
 .mp-sheet .m{color:var(--muted);font-size:14px;margin-top:6px}
 .mp-foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -321,7 +325,7 @@ export function initMap(ctx){
   const dlg = document.createElement('dialog'); dlg.id = 'mapDlg';
   dlg.innerHTML = `
     <div class="mp-head"><div class="mp-top"><button class="mp-x" data-a="close" aria-label="Κλείσιμο">✕</button><div class="mp-title"></div></div><div class="mp-maps"></div><div class="mp-zones"></div></div>
-    <div class="mp-vp"><div class="mp-stage"><img class="mp-img" alt=""><div class="mp-shapes"></div><div class="mp-spots"></div></div><div class="mp-empty" hidden></div></div>
+    <div class="mp-vp"><div class="mp-live" hidden></div><div class="mp-stage"><img class="mp-img" alt=""><div class="mp-shapes"></div><div class="mp-spots"></div></div><div class="mp-empty" hidden></div></div>
     <div class="mp-sheet" hidden></div>
     <div class="mp-foot"></div>
     <div class="mp-ctx" hidden></div>
@@ -329,7 +333,7 @@ export function initMap(ctx){
     <input type="file" accept="image/*" hidden class="mp-file">`;
   document.body.append(dlg);
   const $ = s => dlg.querySelector(s);
-  const vp = $('.mp-vp'), stage = $('.mp-stage'), img = $('.mp-img'), spotsEl = $('.mp-spots'), shapesEl = $('.mp-shapes');
+  const liveEl = $('.mp-live'), vp = $('.mp-vp'), stage = $('.mp-stage'), img = $('.mp-img'), spotsEl = $('.mp-spots'), shapesEl = $('.mp-shapes');
   const sheet = $('.mp-sheet'), foot = $('.mp-foot'), titleEl = $('.mp-title'), zonesEl = $('.mp-zones'), mapsEl = $('.mp-maps'), emptyEl = $('.mp-empty'), fileEl = $('.mp-file');
 
   /* ---------- κατάσταση ---------- */
@@ -346,6 +350,37 @@ export function initMap(ctx){
   let maps = [], curId = null, subbedId, allSpots = {}, unsubMap = null, unsubSpots = {}, loaded = false, afterLoad = null;
   try { curId = localStorage.getItem('parking-map-cur') || null; } catch {}
   const curMap = () => maps.find(m => m.id===curId);
+  const isLive = () => curMap()?.type==='live';
+  let live = null, liveBusy = null, moving = null;
+  function ensureLive(){
+    if (live) return Promise.resolve(live);
+    if (!liveBusy) liveBusy = createLive(liveEl, liveH).then(l => (live = l)).catch(e => { liveBusy = null; toast(e.message || 'Σφάλμα χάρτη'); throw e; });
+    return liveBusy;
+  }
+  function pushLive(){
+    if (!live) return;
+    const occ = occupancy();
+    live.setData({
+      spots: doc.list.map((p,i) => ({ x:p.x, y:p.y, l:p.l, cls: occ.has(key(p.l)) ? 'occ' : 'free', dim: !!(zoneFilter && zoneOf(p.l)!==zoneFilter), focus: (focusKey && key(p.l)===focusKey) || selected===i })),
+      shapes: doc.shapes, pend, color,
+    });
+  }
+  function fitView(){
+    if (!isLive()) return fitAll();
+    ensureLive().then(l => { l.invalidate(); if (!l.fit(doc.list, doc.shapes)) l.centerOnceWhenKnown(18); }).catch(()=>{});
+  }
+  function moveTo(ll){ const i = moving; moving = null; if (doc.list[i]) mutate(()=>{ doc.list[i].x = +ll.lng.toFixed(7); doc.list[i].y = +ll.lat.toFixed(7); }); closeSheet(); }
+  const liveH = {
+    onSpot: i => spotTap(i),
+    onShape: (i, ev) => { const sh = doc.shapes[i]; if (mode==='pick' && !editing){ if (sh?.n) return finishPick(sh.n); return toast('Αυτή η περιοχή δεν έχει όνομα'); } if (editing) shapeMenu(i, ev); },
+    onMap: ll => { closeCtx(); if (moving!=null) return moveTo(ll); if (editing && pend) return pendAdd(ll.lng, ll.lat); if (selected!=null) closeSheet(); },
+    onLongPress: (o, ev) => { if (!editing || pend || tool==='pen' || moving!=null) return; if (o.shape!=null) return shapeMenu(o.shape, ev); emptyMenu(+o.lng.toFixed(7), +o.lat.toFixed(7), ev); },
+    onFreehand: async (pts, closed) => { const name = await askName(); tool = 'pan'; live?.setTool('pan'); if (name===null) return render(); mutate(()=>doc.shapes.push({ t:closed?'g':'p', pts, c:color, n:name })); },
+    onSearch: async () => { const q = ((await ask('Αναζήτηση διεύθυνσης ή τόπου',''))||'').trim(); if (!q) return; const r = await geocode(q); if (!r) return toast('Δεν βρέθηκε'); live?.flyTo(r.lat, r.lng, 18); },
+    onGeoWait: () => toast('Αναμονή για τη θέση σου… (δώσε άδεια τοποθεσίας στον browser)'),
+    onGeoError: e => toast('Η τοποθεσία δεν είναι διαθέσιμη' + (e && e.code===1 ? ' (δεν δόθηκε άδεια)' : '')),
+    onDistance: m => { const d = sheet.querySelector('.mp-dist'); if (d && !d.dataset.route) d.textContent = '📏 ' + fmtDist(m) + ' ευθεία από εσένα'; },
+  };
 
   const key = plateKey;
   const spotKeys = () => new Set(doc.list.map(p => key(p.l)));
@@ -421,7 +456,7 @@ export function initMap(ctx){
     tx = cx - (cx-tx)*r; ty = cy - (cy-ty)*r; s = ns; apply();
   }
   const rel = (x,y) => { const r = vp.getBoundingClientRect(); return { x:x-r.left, y:y-r.top }; };
-  vp.addEventListener('wheel', e => { e.preventDefault(); const p = rel(e.clientX,e.clientY); zoomAt(p.x,p.y,Math.exp(-e.deltaY*0.0015)); }, { passive:false });
+  vp.addEventListener('wheel', e => { if (isLive()) return; e.preventDefault(); const p = rel(e.clientX,e.clientY); zoomAt(p.x,p.y,Math.exp(-e.deltaY*0.0015)); }, { passive:false });
 
   /* ---------- χειρισμός δαχτύλων / ποντικιού ---------- */
   const ptrs = new Map(); let moved = false, dragSpot = null, pinch = null;
@@ -495,6 +530,7 @@ export function initMap(ctx){
   const clearLp = () => { clearTimeout(lpTimer); lpTimer = null; };
   vp.addEventListener('pointerdown', e => {
     if (!cmenu.hidden) closeCtx();
+    if (isLive()) return;
     clearLp(); lp = false;
     if (e.target.closest('.mp-empty')) return;
     vp.setPointerCapture(e.pointerId);
@@ -591,13 +627,15 @@ export function initMap(ctx){
     closeCtx(); pend = { k, pts:[[x,y]] };
     toast(k==='rect' ? 'Πάτα την απέναντι γωνία' : 'Πάτα τις επόμενες κορυφές'); render();
   }
-  async function pendTap(e){
-    const q = pointPct(e.clientX, e.clientY), x = +clampPct(q.x).toFixed(2), y = +clampPct(q.y).toFixed(2);
+  function pendTap(e){ const q = pointPct(e.clientX, e.clientY); return pendAdd(+clampPct(q.x).toFixed(2), +clampPct(q.y).toFixed(2)); }
+  async function pendAdd(x, y){
     if (pend.k==='rect'){
-      const [x0,y0] = pend.pts[0], w = Math.abs(x-x0), h = Math.abs(y-y0);
-      if (w<0.8 || h<0.8) return toast('Διάλεξε πιο μακρινό σημείο');
+      const [x0,y0] = pend.pts[0], w = Math.abs(x-x0), h = Math.abs(y-y0), lv = isLive();
+      if (lv ? (w<1e-7 || h<1e-7) : (w<0.8 || h<0.8)) return toast('Διάλεξε πιο μακρινό σημείο');
       const name = await askName(); if (name===null) return;
-      pend = null; mutate(()=>doc.shapes.push({ t:'r', x:+Math.min(x0,x).toFixed(2), y:+Math.min(y0,y).toFixed(2), w:+w.toFixed(2), h:+h.toFixed(2), c:color, n:name }));
+      pend = null;
+      if (lv) mutate(()=>doc.shapes.push({ t:'g', pts:[[x0,y0],[x,y0],[x,y],[x0,y]], c:color, n:name }));
+      else mutate(()=>doc.shapes.push({ t:'r', x:+Math.min(x0,x).toFixed(2), y:+Math.min(y0,y).toFixed(2), w:+w.toFixed(2), h:+h.toFixed(2), c:color, n:name }));
       return;
     }
     pend.pts.push([x,y]); render();
@@ -623,7 +661,7 @@ export function initMap(ctx){
   }
   function spotTap(i){
     const sp = doc.list[i]; if (!sp) return;
-    selected = i;
+    selected = i; live?.setTarget(isLive() ? { lat:sp.y, lng:sp.x } : null);
     if (mode==='pick' && !editing){
       const cars = occupancy().get(key(sp.l));
       if (!cars?.length) return finishPick(sp.l);
@@ -631,13 +669,14 @@ export function initMap(ctx){
     renderSheet(); render();
   }
   function finishPick(label){ const cb = pickCb, id = curId; close(); cb?.(label, id); }
-  function closeSheet(){ selected = null; sheet.hidden = true; render(); }
+  function closeSheet(){ selected = null; moving = null; sheet.hidden = true; live?.setTarget(null); live?.setRoute(null); render(); }
 
   function renderSheet(){
     const sp = doc.list[selected];
     if (!sp){ sheet.hidden = true; return; }
     sheet.hidden = false;
-    const spEdit = () => editing ? `<div class="mp-row" style="margin-top:8px"><button class="btn" data-a="rename">✎ Όνομα θέσης</button><button class="btn danger" data-a="del">🗑 Διαγραφή θέσης</button></div>` : '';
+    const lvBtns = () => isLive() ? `<div class="mp-row" style="margin-top:8px"><button class="btn primary" data-a="route">🧭 Διαδρομή</button><button class="btn" data-a="gmaps">↗ Άνοιγμα στους Χάρτες</button>${editing ? '<button class="btn" data-a="movespot">✋ Μετακίνηση</button>' : ''}</div><div class="m mp-dist"></div>` : '';
+    const spEdit = () => lvBtns() + (editing ? `<div class="mp-row" style="margin-top:8px"><button class="btn" data-a="rename">✎ Όνομα θέσης</button><button class="btn danger" data-a="del">🗑 Διαγραφή θέσης</button></div>` : '');
     const cars = occupancy().get(key(sp.l)) || [];
     if (!cars.length){
       sheet.innerHTML = `<b style="font-size:18px">Θέση ${esc(sp.l)}</b> <span class="m">· ελεύθερη</span>
@@ -663,6 +702,18 @@ export function initMap(ctx){
       catch(err){ toast('Σφάλμα αποθήκευσης: '+err.message); }
       remote = final; doc = cloneRemote(); editing = false; closeSheet(); renderAll(); return;
     }
+    if (a==='route'){
+      const sp = doc.list[selected]; if (!sp || !live) return;
+      const me = live.getMe(); if (!me){ live.centerOnMe(); return toast('Δώσε άδεια τοποθεσίας και ξαναπάτα «Διαδρομή»'); }
+      toast('Υπολογισμός διαδρομής…');
+      const r = await walkRoute(me, { lat:sp.y, lng:sp.x });
+      const d = sheet.querySelector('.mp-dist');
+      if (!r){ if (d) d.textContent = 'Δεν βρέθηκε διαδρομή περπατήματος — ακολούθησε την ευθεία γραμμή.'; return; }
+      live.setRoute(r.coords); if (d){ d.dataset.route = '1'; d.textContent = `🚶 ${fmtDist(r.dist)} · περίπου ${Math.max(1, Math.round(r.dur/60))} λεπτά`; }
+      return;
+    }
+    if (a==='gmaps'){ const sp = doc.list[selected]; if (sp) window.open(`https://www.google.com/maps/dir/?api=1&destination=${sp.y},${sp.x}&travelmode=walking`, '_blank'); return; }
+    if (a==='movespot'){ moving = selected; sheet.hidden = true; toast('Πάτα στον χάρτη το νέο σημείο της θέσης'); return; }
     if (a==='fmore'){ fmore = !fmore; renderFoot(); return; }
     if (a==='cx'){
       const k = b.dataset.k, x = +cmenu.dataset.x, y = +cmenu.dataset.y, i = +cmenu.dataset.i;
@@ -717,12 +768,13 @@ export function initMap(ctx){
       } catch(err){ toast('Σφάλμα περικοπής: '+err.message); }
       return;
     }
-    if (a==='selmap'){ if (b.dataset.id===curId) return; closeSheet(); useMap(b.dataset.id); afterLoad = () => fitAll(); render(); return; }
+    if (a==='selmap'){ if (b.dataset.id===curId) return; closeSheet(); useMap(b.dataset.id); afterLoad = fitView; render(); return; }
     if (a==='newmap'){
-      const name = ((await ask('Όνομα νέου χάρτη (π.χ. Υπόγειο, Πάρκινγκ 2)', 'Χάρτης '+(maps.length+1)))||'').trim(); if (!name) return;
-      const id = 'm'+Date.now().toString(36); maps = [...maps, { id, name }];
+      const lv = b.dataset.t!=='img';
+      const name = ((await ask(lv ? 'Όνομα νέου live χάρτη (π.χ. Πάρκινγκ Α)' : 'Όνομα νέου χάρτη με εικόνα (π.χ. Υπόγειο)', (lv ? 'Live ' : 'Χάρτης ')+(maps.length+1)))||'').trim(); if (!name) return;
+      const id = 'm'+Date.now().toString(36); maps = [...maps, lv ? { id, name, type:'live' } : { id, name }];
       try { await store.setMaps(maps); } catch(err){ maps = maps.filter(m=>m.id!==id); return toast('Σφάλμα: '+err.message); }
-      closeSheet(); useMap(id); afterLoad = () => fitAll(); toast('Ο χάρτης «'+name+'» δημιουργήθηκε — ανέβασε εικόνα'); render(); return;
+      closeSheet(); useMap(id); afterLoad = fitView; toast('Ο χάρτης «'+name+'» δημιουργήθηκε'+(lv ? ' — κράτα πατημένο σε σημείο για να βάλεις θέσεις' : ' — ανέβασε εικόνα')); render(); return;
     }
     if (a==='renamemap'){
       const m = curMap(); if (!m) return; const name = ((await ask('Νέο όνομα χάρτη', m.name))||'').trim(); if (!name) return;
@@ -733,7 +785,7 @@ export function initMap(ctx){
       if (!confirm('Να διαγραφεί ο χάρτης «'+m.name+'» (φωτογραφία, θέσεις και σχέδια);\nΔεν αναιρείται και φεύγει για όλους τους υπαλλήλους.\nΤα οχήματα δεν επηρεάζονται.')) return;
       clearTimeout(saveT); const id = m.id;
       try { await store.deleteMapData(id); maps = maps.filter(x => x.id!==id); await store.setMaps(maps); } catch(err){ return toast('Σφάλμα διαγραφής: '+err.message); }
-      editing = mode==='browse'; startLabel = null; undo = []; useMap(maps[0]?.id || null); afterLoad = () => fitAll();
+      editing = mode==='browse'; startLabel = null; undo = []; useMap(maps[0]?.id || null); afterLoad = fitView;
       closeSheet(); renderAll(); onChange?.(); toast('Ο χάρτης διαγράφηκε'); return;
     }
     if (a==='zone'){ zoneFilter = b.dataset.z || null; fitZone(); render(); return; }
@@ -765,12 +817,14 @@ export function initMap(ctx){
       if (!dlg.open || !vp.clientWidth) return;
       const w = vp.clientWidth, h = vp.clientHeight; if (w===lw && h===lh) return;
       const first = !lw; lw = w; lh = h;
+      if (isLive()){ live?.invalidate(); return; }
       clearTimeout(rt); rt = setTimeout(() => { if (s===1 || first) fitAll(); else { layout(); apply(); } }, 60);
     }).observe(vp);
   }
-  dlg.addEventListener('close', () => { editing = false; ptrs.clear(); });
+  dlg.addEventListener('close', () => { editing = false; ptrs.clear(); live?.stop(); });
 
   function fitZone(){
+    if (isLive()){ const ps = doc.list.filter(p => !zoneFilter || zoneOf(p.l)===zoneFilter); ensureLive().then(l => l.fit(ps.length ? ps : doc.list, zoneFilter ? [] : doc.shapes)); return; }
     const pts = doc.list.filter(p => !zoneFilter || zoneOf(p.l)===zoneFilter);
     if (!pts.length || !mapImg) return fitAll();
     if (!zoneFilter) return fitAll();
@@ -789,9 +843,9 @@ export function initMap(ctx){
       }
       foot.innerHTML = `<div class="hint">Πράσινο: ελεύθερη · Κόκκινο: κατειλημμένη · Κράτα πατημένο σε σημείο: θέση ή σχέδιο · Κράτα πατημένη μια θέση για να τη μετακινήσεις</div>
         <button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="fmore">⚙ ${fmore ? 'Λιγότερα' : 'Ρυθμίσεις'}</button>
-        ${fmore ? `<div class="mp-more"><button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button><button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button><button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
-        <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
-        <label>Μέγεθος ονομάτων <input class="mp-lsize" type="range" min="0.8" max="8" step="0.1" value="${doc.lsize||2.4}"></label></div>` : ''}`;
+        ${fmore ? `<div class="mp-more"><button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>${isLive() ? '' : '<button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button>'}<button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
+        ${isLive() ? '' : `<label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>`}
+        ${isLive() ? '' : `<label>Μέγεθος ονομάτων <input class="mp-lsize" type="range" min="0.8" max="8" step="0.1" value="${doc.lsize||2.4}"></label>`}</div>` : ''}`;
     } else if (mode==='pick'){
       foot.innerHTML = `<div class="hint">Πάτα μια ελεύθερη (πράσινη) θέση ή μια περιοχή που έχεις σχεδιάσει για να την επιλέξεις.</div>`;
     } else {
@@ -832,13 +886,17 @@ export function initMap(ctx){
     let used = 0; for (const p of doc.list) if (occ.has(key(p.l))) used++;
     titleEl.innerHTML = `${esc(curMap()?.name || 'Χάρτης παρκινγκ')}<small>${total ? `${total-used} ελεύθερες από ${total}` : 'δεν έχουν οριστεί θέσεις'}</small>`;
     mapsEl.hidden = false;
-    mapsEl.innerHTML = maps.map(m => `<button class="mp-m ${m.id===curId?'on':''}" data-a="selmap" data-id="${esc(m.id)}">${esc(m.name)}</button>`).join('') + (mode==='pick' ? '' : '<button class="mp-m add" data-a="newmap">＋ Νέος χάρτης</button>');
+    mapsEl.innerHTML = maps.map(m => `<button class="mp-m ${m.id===curId?'on':''}" data-a="selmap" data-id="${esc(m.id)}">${esc(m.name)}</button>`).join('') + (mode==='pick' ? '' : '<button class="mp-m add" data-a="newmap" data-t="live">＋ Live χάρτης</button><button class="mp-m add" data-a="newmap" data-t="img">＋ Εικόνα</button>');
     const zs = [...new Set(doc.list.map(p=>zoneOf(p.l)))].sort();
     zonesEl.innerHTML = zs.length>1 ? [`<button class="mp-z ${!zoneFilter?'on':''}" data-a="zone" data-z="">Όλες</button>`, ...zs.map(z=>`<button class="mp-z ${zoneFilter===z?'on':''}" data-a="zone" data-z="${esc(z)}">${esc(z)}</button>`)].join('') : '';
-    if (!mapImg){
+    liveEl.hidden = !isLive(); if (!isLive()) live?.stop();
+    if (isLive()){
+      stage.style.display = 'none'; emptyEl.hidden = true;
+      ensureLive().then(l => { l.setTool(tool); pushLive(); l.start(); }).catch(()=>{});
+    } else if (!mapImg){
       img.removeAttribute('src'); stage.style.display = 'none'; emptyEl.hidden = false;
       emptyEl.innerHTML = !curId
-        ? `<div style="font-size:42px">🗺️</div><div>Δεν υπάρχει χάρτης ακόμα.<br>Φτιάξε έναν και ανέβασε φωτογραφία ή σχέδιο του παρκινγκ.</div><button class="btn primary" data-a="newmap">＋ Νέος χάρτης</button>`
+        ? `<div style="font-size:42px">🗺️</div><div>Δεν υπάρχει χάρτης ακόμα.<br>Φτιάξε έναν live δορυφορικό χάρτη ή έναν χάρτη με φωτογραφία/σχέδιο.</div><div class="mp-row"><button class="btn primary" data-a="newmap" data-t="live">＋ Live χάρτης (δορυφόρος)</button><button class="btn" data-a="newmap" data-t="img">＋ Χάρτης με εικόνα</button></div>`
         : !loaded ? `<div>Φόρτωση…</div>`
         : `<div style="font-size:42px">🗺️</div><div>Ο χάρτης «${esc(curMap()?.name||'')}» δεν έχει εικόνα ακόμα.<br>Ανέβασε μια φωτογραφία ή σχέδιο του παρκινγκ (π.χ. από ψηλά ή κάτοψη) και βάλε πάνω της τις θέσεις.</div><div class="mp-row"><button class="btn primary" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="pickimg">📷 Ανέβασμα εικόνας</button></div>`;
     } else {
@@ -876,7 +934,16 @@ export function initMap(ctx){
     doc = cloneRemote();
     sheet.hidden = true; if (!dlg.open) dlg.showModal();
     render();
-    const settle = () => {
+    const settle = async () => {
+      if (isLive()){
+        const l = await ensureLive().catch(()=>null); if (!l) return; l.invalidate(); render(); l.start();
+        if (focusKey){
+          const i = doc.list.findIndex(p => key(p.l)===focusKey);
+          if (i>=0){ const p = doc.list[i]; l.flyTo(p.y, p.x, 20); selected = i; l.setTarget({ lat:p.y, lng:p.x }); renderSheet(); render(); }
+          else toast('Η θέση δεν υπάρχει στον χάρτη');
+        } else if (!l.fit(doc.list, doc.shapes)) l.centerOnceWhenKnown(18);
+        return;
+      }
       fitAll();
       if (focusKey){
         const i = doc.list.findIndex(p => key(p.l)===focusKey);
