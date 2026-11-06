@@ -116,7 +116,7 @@ const CSS = `
 .geo-foot .btn{flex:1}
 
 /* ===== Ανανεωμένη εμφάνιση χάρτη ===== */
-.mp-head{background:linear-gradient(135deg,#0b1b3a,#123a7a);padding:calc(10px + env(safe-area-inset-top)) 12px 12px;box-shadow:0 6px 18px rgba(2,8,23,.35);position:relative;z-index:5}
+.mp-head{background:linear-gradient(135deg,#0b1b3a,#123a7a);padding:calc(30px + env(safe-area-inset-top)) 12px 12px;box-shadow:0 6px 18px rgba(2,8,23,.35);position:relative;z-index:5}
 .mp-x{background:rgba(255,255,255,.14);border-radius:12px}
 .mp-title{font-size:17px;font-weight:800}
 .mp-m{border:0;background:rgba(255,255,255,.12);border-radius:99px;color:#e6eeff}

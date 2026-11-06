@@ -98,7 +98,7 @@
   /* ===== Ανανεωμένη εμφάνιση ===== */
   :root{--grad:linear-gradient(135deg,#0b1b3a 0%,#123a7a 100%);--r:14px;--shadow:0 1px 2px rgba(15,23,42,.06),0 4px 14px rgba(15,23,42,.06)}
   body{background:var(--bg);-webkit-font-smoothing:antialiased}
-  header{background:var(--grad);padding:calc(12px + env(safe-area-inset-top)) 14px 14px;border-radius:0 0 20px 20px;box-shadow:0 8px 24px rgba(2,8,23,.35)}
+  header{background:var(--grad);padding:calc(32px + env(safe-area-inset-top)) 14px 14px;border-radius:0 0 20px 20px;box-shadow:0 8px 24px rgba(2,8,23,.35)}
   .brand{display:flex;align-items:center;gap:11px}
   .brand svg{width:38px;height:38px;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.4)}
   h1{font-size:20px;font-weight:800;letter-spacing:.2px;line-height:1.1}
@@ -210,7 +210,7 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=31';
+import { initMap } from './map.js?v=32';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
