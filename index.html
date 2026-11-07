@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0b0b0d">
+<meta name="theme-color" content="#141210">
 <script>document.documentElement.dataset.theme=localStorage.getItem('parking-theme')||'dark'</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -111,10 +111,7 @@
   .tabs{margin:14px 14px 0;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:99px;box-shadow:var(--shadow);gap:2px}
   .tab{border:0;background:transparent;border-radius:99px;padding:9px 8px;font-weight:700;font-size:14px;color:var(--muted)}
   .tab.on{background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.45)}
-  .card{border:0;border-left:5px solid #94a3b8;border-radius:var(--r);box-shadow:var(--shadow)}
-  .card:has(.tag.in){border-left-color:var(--ok)}
-  .card.open{border-left-color:var(--accent);box-shadow:0 10px 28px rgba(37,99,235,.22)}
-  .card:has(.tag.in).open{border-left-color:var(--ok)}
+  .card{border-radius:var(--r)}
   .plate{position:relative;padding-left:27px;border-radius:7px;border-width:2px;overflow:hidden;background:linear-gradient(#fff,#f1f5f9);box-shadow:0 1px 3px rgba(0,0,0,.2)}
   .plate::before{content:"GR";position:absolute;left:0;top:0;bottom:0;width:19px;background:#1d4ed8;color:#fff;font-size:8px;font-weight:800;letter-spacing:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px}
   .card.open .plate{padding-left:30px}
@@ -142,18 +139,18 @@
   #chDlg .chbtn small{display:block;font-size:12px;font-weight:500;opacity:.85;margin-top:2px}
   #chDlg .chbtn:disabled{opacity:.45}
   #chDlg .chx{background:transparent;border:0;color:var(--muted)}
-  .toast{border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:11px 18px}
+  .toast{background:#2b2118;border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:11px 18px}
 
   /* ===== Θέματα: σκούρο (προεπιλογή) και φωτεινό — μινιμαλ ===== */
-  :root,html[data-theme=light]{ --bg:#f5f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e5eaf1; --accent:#2563eb; --accent-d:#1d4ed8;
-    --surf:#fff; --field:#f1f5f9; --field-f:#fff; --seg:#e9eef5; --seg-on:#fff; --seg-fg:#1d4ed8; --badge:#eef2f7; --badge-fg:#475569; --edge:#cbd5e1;
-    --in-bg:#e3f8ea; --in-fg:#15803d; --out-bg:#eef2f7; --out-fg:#475569; --strip:#0f172a; --chip:#fff; --inp:#f8fafc;
-    --bt-bg:#eaf1ff; --bt-fg:#1d4ed8; --bt-bd:#c9dbff; --rd-bg:#fff0f0; --rd-fg:#b91c1c; --rd-bd:#fbcaca;
-    --shadow:0 1px 2px rgba(15,23,42,.05),0 2px 8px rgba(15,23,42,.05); --open-shadow:0 6px 20px rgba(15,23,42,.1); color-scheme:light }
-  html[data-theme=dark]{ --bg:#0b0b0d; --card:#131316; --text:#ececf0; --muted:#8a8a94; --line:#222227; --accent:#4c8dff; --accent-d:#3b7af0;
-    --surf:#0b0b0d; --field:#17171b; --field-f:#1c1c21; --seg:#141417; --seg-on:#26262c; --seg-fg:#fff; --badge:#1a1a1f; --badge-fg:#a1a1aa; --edge:#2e2e35;
-    --in-bg:rgba(74,222,128,.12); --in-fg:#4ade80; --out-bg:#1a1a1f; --out-fg:#a1a1aa; --strip:#000; --chip:#17171b; --inp:#17171b;
-    --bt-bg:#181c27; --bt-fg:#a9c1ff; --bt-bd:#2a3350; --rd-bg:#271416; --rd-fg:#fca5a5; --rd-bd:#4a2326;
+  :root,html[data-theme=light]{ --bg:#f3ece0; --card:#fbf7ef; --text:#2b2118; --muted:#7d6e5e; --line:#e2d7c4; --accent:#7a4e2d; --accent-d:#623d22;
+    --surf:#fbf7ef; --field:#ece3d3; --field-f:#fff; --seg:#e8dfcd; --seg-on:#fbf7ef; --seg-fg:#7a4e2d; --badge:#ece3d3; --badge-fg:#6b5a48; --edge:#d3c6af;
+    --in-bg:#ece0c8; --in-fg:#7a4e2d; --out-bg:#ece3d3; --out-fg:#7d6e5e; --strip:#2b2118; --chip:#fbf7ef; --inp:#f6f0e4;
+    --bt-bg:#ece0c8; --bt-fg:#623d22; --bt-bd:#d9c8a8; --rd-bg:#f6e4df; --rd-fg:#9a3b2b; --rd-bd:#e6bdb3;
+    --shadow:0 1px 2px rgba(43,33,24,.06),0 2px 8px rgba(43,33,24,.06); --open-shadow:0 6px 20px rgba(43,33,24,.14); color-scheme:light }
+  html[data-theme=dark]{ --bg:#141210; --card:#1d1a17; --text:#efe6d6; --muted:#9a8f80; --line:#2d2822; --accent:#c08a5a; --accent-d:#a8744a;
+    --surf:#141210; --field:#221e1a; --field-f:#29241f; --seg:#1b1815; --seg-on:#2f2922; --seg-fg:#efe6d6; --badge:#221e1a; --badge-fg:#b5a898; --edge:#3a332b;
+    --in-bg:rgba(201,160,110,.14); --in-fg:#d9b88a; --out-bg:#221e1a; --out-fg:#9a8f80; --strip:#0c0b0a; --chip:#221e1a; --inp:#221e1a;
+    --bt-bg:#2a231c; --bt-fg:#e0c29a; --bt-bd:#4a3d2f; --rd-bg:#2a1b17; --rd-fg:#e8a898; --rd-bd:#4d2e26;
     --shadow:none; --open-shadow:0 8px 24px rgba(0,0,0,.5); color-scheme:dark }
   body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--strip);z-index:60}
   header{background:var(--surf);color:var(--text);border-radius:0;padding:calc(env(safe-area-inset-top) + 32px) 14px 12px;box-shadow:0 1px 0 var(--line)}
@@ -162,7 +159,7 @@
   .brand img{width:38px;height:38px;border-radius:10px;display:block}
   .badge{background:var(--badge);color:var(--badge-fg);backdrop-filter:none}
   .badge.live{background:var(--in-bg);color:var(--in-fg)}
-  .badge.demo{background:rgba(234,179,8,.16);color:#ca8a04}
+  .badge.demo{background:var(--bt-bg);color:var(--bt-fg)}
   .tabbar{position:sticky;top:var(--hh,150px);z-index:9;background:var(--bg);padding:12px 14px 8px}
   .tabbar .tabs{margin:0}
   html,body{overflow-x:clip;max-width:100%;overscroll-behavior-x:none}
@@ -191,15 +188,14 @@
   .tabs{background:var(--seg);border:0;box-shadow:none;padding:4px}
   .tab{color:var(--muted)}
   .tab.on{background:var(--seg-on);color:var(--seg-fg);box-shadow:none}
-  .card{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--edge);box-shadow:var(--shadow)}
-  .card:has(.tag.in){border-left-color:var(--in-fg)}
-  .card.open{border-color:var(--line);border-left-color:var(--accent);box-shadow:var(--open-shadow)}
-  .card:has(.tag.in).open{border-left-color:var(--in-fg)}
-  .plate{background:#f4f4f5;border-color:#0f172a;color:#0f172a;box-shadow:none}
+  .card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .card.open{border-color:var(--accent);box-shadow:var(--open-shadow)}
+  .plate{background:#f4efe4;border-color:#2b2118;color:#2b2118;box-shadow:none}
+  .plate::before{background:#3a332b}
   .btn.primary,.fab{background:var(--accent);border-color:var(--accent);color:#fff}
   .fab{box-shadow:0 6px 18px rgba(0,0,0,.35)}
-  .btn.go{background:#16a34a;border-color:#16a34a;color:#fff}
-  .btn.nav{background:#0ea5e9;border-color:#0ea5e9;color:#fff}
+  .btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.nav{background:#6f6457;border-color:#6f6457;color:#fff}
   dialog{background:var(--card);color:var(--text);border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
   dialog::backdrop{background:rgba(0,0,0,.55)}
   input,textarea,select{background:var(--inp);color:var(--text);border-color:var(--line)}
@@ -257,7 +253,7 @@
     <label>Θέση</label>
     <div class="plrow">
       <input id="fLoc" required placeholder="π.χ. Α12 ή Όροφος 2 - Β14">
-      <button class="cam" id="mapF" type="button" aria-label="Επιλογή από χάρτη" style="background:var(--ok);color:#fff"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.2v13.6L9 17.6l6 2.2 6-2.2V4.2L15 6.4 9 4zM9 4v13.6M15 6.4v13.4"/></svg></button>
+      <button class="cam" id="mapF" type="button" aria-label="Επιλογή από χάρτη" style="background:var(--accent);color:#fff"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.2v13.6L9 17.6l6 2.2 6-2.2V4.2L15 6.4 9 4zM9 4v13.6M15 6.4v13.4"/></svg></button>
     </div>
     <div class="chips" id="chips"></div>
     <div class="two">
@@ -302,7 +298,7 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=33';
+import { initMap } from './map.js?v=34';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
@@ -327,7 +323,7 @@ if (LIVE) {
   const fs = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
   const app = initializeApp(CFG);
   const db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) });
-  ({ requireLogin: window.__rl } = await import('./auth.js?v=6'));
+  ({ requireLogin: window.__rl } = await import('./auth.js?v=7'));
   ME = await window.__rl(app, db, fs, CFG);           // δεν προχωράει η εφαρμογή αν δεν γίνει είσοδος
   const col = fs.collection(db, 'vehicles');
   store = {
@@ -411,7 +407,7 @@ modeEl.title = LIVE ? 'Συγχρονισμός σε πραγματικό χρό
 
 const CAN = !ME || ME.head;   // false = υπάλληλος: μόνο προβολή
 // Θέμα: σκούρο (προεπιλογή) ή φωτεινό
-const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').textContent = t === 'dark' ? '☀️' : '🌙'; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#0b0b0d' : '#ffffff'); };
+const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').textContent = t === 'dark' ? '☀️' : '🌙'; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#141210' : '#fbf7ef'); };
 applyTheme(document.documentElement.dataset.theme || 'dark');
 // Η κεφαλίδα και οι καρτέλες μένουν σταθερές πάνω όταν γίνεται scroll
 const setHH = () => document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px');

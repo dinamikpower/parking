@@ -2,13 +2,13 @@
    - Ανεβάζεις φωτογραφία ή σχέδιο του χώρου και βάζεις τις θέσεις με πάτημα.
    - Η ζώνη προκύπτει από τα γράμματα της ονομασίας (Α12 → ζώνη Α).
    - Ένα όχημα «κάθεται» σε θέση όταν το πεδίο Θέση της καταχώρησής του είναι ίδιο με την ονομασία της θέσης. */
-import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=5';
+import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=6';
 
 const CSS = `
 #mapDlg{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;border-radius:0;padding:0;background:var(--bg);color:var(--text);overflow:hidden}
 #mapDlg[open]{display:flex;flex-direction:column}
 #mapDlg::backdrop{background:#000}
-.mp-head{background:#0f172a;color:#fff;padding:10px 12px;flex:none}
+.mp-head{background:#1d1a17;color:#fff;padding:10px 12px;flex:none}
 .mp-top{display:flex;align-items:center;gap:10px}
 .mp-x{background:#334155;color:#fff;border:0;border-radius:10px;width:40px;height:40px;font-size:18px}
 .mp-title{font-weight:700;font-size:16px;flex:1}
@@ -16,12 +16,12 @@ const CSS = `
 .mp-zones,.mp-maps{display:flex;gap:6px;overflow-x:auto;padding-top:8px;scrollbar-width:none}
 .mp-zones::-webkit-scrollbar,.mp-maps::-webkit-scrollbar{display:none}
 .mp-maps[hidden]{display:none}
-.mp-m{flex:none;padding:7px 14px;border-radius:10px;border:1px solid #64748b;background:#1e293b;color:#e2e8f0;font-size:14px;font-weight:700}
-.mp-m.on{background:#0ea5e9;border-color:#0ea5e9;color:#fff}
+.mp-m{flex:none;padding:7px 14px;border-radius:10px;border:1px solid #6f6457;background:#2a2520;color:#efe6d6;font-size:14px;font-weight:700}
+.mp-m.on{background:#c08a5a;border-color:#c08a5a;color:#fff}
 .mp-m.add{border-style:dashed;background:transparent}
-.mp-z{flex:none;padding:6px 12px;border-radius:99px;border:1px solid #475569;background:transparent;color:#e2e8f0;font-size:14px;font-weight:600}
-.mp-z.on{background:#2563eb;border-color:#2563eb;color:#fff}
-.mp-vp{position:relative;flex:1;overflow:hidden;background:#1e293b;touch-action:none;user-select:none;-webkit-user-select:none}
+.mp-z{flex:none;padding:6px 12px;border-radius:99px;border:1px solid #475569;background:transparent;color:#efe6d6;font-size:14px;font-weight:600}
+.mp-z.on{background:#c08a5a;border-color:#c08a5a;color:#fff}
+.mp-vp{position:relative;flex:1;overflow:hidden;background:#2a2520;touch-action:none;user-select:none;-webkit-user-select:none}
 .mp-stage{position:absolute;left:0;top:0;transform-origin:0 0}
 .mp-img{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
 .mp-spots{position:absolute;inset:0;pointer-events:none}
@@ -98,7 +98,7 @@ const CSS = `
 .cr-box{position:relative;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 .cr-img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
 .cr-rect{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.6);cursor:move;touch-action:none}
-.cr-rect i{position:absolute;width:30px;height:30px;background:#0ea5e9;border:3px solid #fff;border-radius:50%;box-sizing:border-box}
+.cr-rect i{position:absolute;width:30px;height:30px;background:#c08a5a;border:3px solid #fff;border-radius:50%;box-sizing:border-box}
 .cr-rect i[data-h=nw]{left:-15px;top:-15px}.cr-rect i[data-h=ne]{right:-15px;top:-15px}
 .cr-rect i[data-h=sw]{left:-15px;bottom:-15px}.cr-rect i[data-h=se]{right:-15px;bottom:-15px}
 .cr-foot{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
@@ -111,27 +111,27 @@ const CSS = `
 .geo-head small{flex:1 1 100%;color:#94a3b8;font-size:12px}
 .geo-head input{flex:1;min-width:0;font-size:16px;padding:10px;border-radius:10px;border:0}
 .geo-head button{padding:10px 12px;border-radius:10px;border:0;background:#334155;color:#fff;font-size:15px;font-weight:600}
-.geo-map{flex:1;min-height:0;background:#1e293b}
+.geo-map{flex:1;min-height:0;background:#2a2520}
 .geo-foot{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
 .geo-foot .btn{flex:1}
 
 /* ===== Ανανεωμένη εμφάνιση χάρτη ===== */
-.mp-head{background:linear-gradient(135deg,#0b1b3a,#123a7a);padding:calc(30px + env(safe-area-inset-top)) 12px 12px;box-shadow:0 6px 18px rgba(2,8,23,.35);position:relative;z-index:5}
+.mp-head{background:#1d1a17;padding:calc(30px + env(safe-area-inset-top)) 12px 12px;box-shadow:0 6px 18px rgba(2,8,23,.35);position:relative;z-index:5}
 .mp-x{background:rgba(255,255,255,.14);border-radius:12px}
 .mp-title{font-size:17px;font-weight:800}
 .mp-m{border:0;background:rgba(255,255,255,.12);border-radius:99px;color:#e6eeff}
-.mp-m.on{background:linear-gradient(135deg,#0284c7,#38bdf8);color:#fff;box-shadow:0 2px 8px rgba(2,132,199,.5)}
+.mp-m.on{background:#c08a5a;color:#fff;box-shadow:0 2px 8px rgba(192,138,90,.4)}
 .mp-m.add{border:1px dashed rgba(255,255,255,.5);background:transparent}
 .mp-z{border:0;background:rgba(255,255,255,.1);color:#dbe7ff}
-.mp-z.on{background:linear-gradient(135deg,#1d4ed8,#3b82f6);box-shadow:0 2px 8px rgba(37,99,235,.5)}
+.mp-z.on{background:#c08a5a;box-shadow:0 2px 8px rgba(192,138,90,.4)}
 .mp-sheet,.mp-foot{border-top:0;border-radius:20px 20px 0 0;box-shadow:0 -8px 24px rgba(2,8,23,.22);position:relative;z-index:4}
 .mp-tool{border-radius:12px;border-width:1.5px}
-.mp-tool.on{background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-color:transparent}
+.mp-tool.on{background:#c08a5a;border-color:transparent}
 .spot{border:1.5px solid rgba(255,255,255,.92);box-shadow:0 1px 5px rgba(0,0,0,.45)}
 .shp-l,.shp b{background:rgba(11,27,58,.8)}
 .mp-ctx{border:0;border-radius:18px;box-shadow:0 14px 40px rgba(2,8,23,.5)}
 .mp-ask form{border:0;border-radius:20px;box-shadow:0 24px 60px rgba(2,8,23,.5)}
-.mp-fab{background:linear-gradient(135deg,#1d4ed8,#3b82f6)}
+.mp-fab{background:#c08a5a}
 `;
 
 const MAXCHARS = 880000;           // όριο μεγέθους εικόνας (το έγγραφο Firestore δέχεται ~1MB)

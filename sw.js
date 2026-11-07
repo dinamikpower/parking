@@ -1,6 +1,6 @@
 // Απλό cache του κελύφους ώστε η εφαρμογή να ανοίγει γρήγορα και χωρίς σήμα.
-const C = 'parking-shell-v64', T = 'parking-tiles-v1', A = 'parking-ai-v1';
-const SHELL = ['./', './index.html', './map.js?v=33', './alpr.js?v=1', './auth.js?v=6', './live.js?v=5', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css', './manifest.json', './icon-192.png', './apple-touch-icon.png', './icon.svg'];
+const C = 'parking-shell-v65', T = 'parking-tiles-v1', A = 'parking-ai-v1';
+const SHELL = ['./', './index.html', './map.js?v=34', './alpr.js?v=1', './auth.js?v=7', './live.js?v=6', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css', './manifest.json', './icon-192.png', './apple-touch-icon.png', './icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C && k !== T && k !== A).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener('fetch', e => {
