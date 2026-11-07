@@ -726,13 +726,13 @@ export function initMap(ctx){
     }
     sheet.innerHTML = cars.map(v => `<div style="margin-bottom:10px"><span class="plate">${esc(v.plate)}</span>
       <div class="m">📍 ${esc(v.location)} · ⏱ ${fmtT(v.entryAt)} (${fmtDur(v.entryAt,Date.now())})${v.keyNo?` · 🔑 ${esc(v.keyNo)}`:''}${v.phone?` · <a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>`:''}</div>
-      <div class="mp-row">${CAN()?`<button class="btn go" data-a="exit" data-id="${v.id}">Έφυγε ✓</button>`:''}${mode==='pick'?`<button class="btn" data-a="usepick">Χρήση της θέσης παρ' όλα αυτά</button>`:''}<button class="btn" data-a="closesheet">Κλείσιμο</button></div></div>`).join('') + spEdit();
+      <div class="mp-row"><button class="btn go" data-a="exit" data-id="${v.id}">Έφυγε ✓</button>${mode==='pick'?`<button class="btn" data-a="usepick">Χρήση της θέσης παρ' όλα αυτά</button>`:''}<button class="btn" data-a="closesheet">Κλείσιμο</button></div></div>`).join('') + spEdit();
   }
 
   dlg.addEventListener('click', async e => {
     const b = e.target.closest('[data-a]'); if (!b) return;
     const a = b.dataset.a;
-    if (!CAN() && ['newhere','exit','newmap','renamemap','clearmap','newzone','img','pickimg','geoimg','cropimg','rename','del','movespot','done','undo','cx'].includes(a)) return;
+    if (!CAN() && ['newhere','newmap','renamemap','clearmap','newzone','img','pickimg','geoimg','cropimg','rename','del','movespot','done','undo','cx'].includes(a)) return;
     if (a==='close') return close();
     if (a==='closesheet') return closeSheet();
     if (a==='edit'){ if (!CAN()) return; editing = true; mode = 'browse'; closeSheet(); renderAll(); return; }

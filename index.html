@@ -233,7 +233,7 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=32';
+import { initMap } from './map.js?v=33';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
@@ -405,7 +405,7 @@ function carCard(v){
       ${v.note?`<span>📝 ${esc(v.note)}</span>`:''}
       ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}
     </div>
-    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}${mapApi?.coords?.(v.location, v.mapId)?'<button class="btn grow nav" data-act="nav">🧭 Πλοήγηση</button>':''}${CAN?'<button class="btn grow" data-act="edit">Επεξεργασία</button><button class="btn go grow" data-act="exit">Έφυγε ✓</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button>':''}</div>`:
+    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}${mapApi?.coords?.(v.location, v.mapId)?'<button class="btn grow nav" data-act="nav">🧭 Πλοήγηση</button>':''}${CAN?'<button class="btn grow" data-act="edit">Επεξεργασία</button>':''}<button class="btn go grow" data-act="exit">Έφυγε ✓</button>${CAN?'<button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button>':''}</div>`:
       CAN ? `<div class="actions"><button class="btn grow" data-act="again">Ξανά στο παρκινγκ</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>` : ''}
     </div></div>
   </div>`;

@@ -10,7 +10,12 @@ service cloud.firestore {
     function noInit()   { return !exists(/databases/$(database)/documents/meta/init); }
     function isOwner()  { return signedIn() && request.auth.token.email == 'ADMIN_EMAIL'; }   // αντικαθίσταται από το auth-setup.sh
 
-    match /vehicles/{id} { allow read: if isStaff(); allow write: if isHead(); }
+    match /vehicles/{id} {
+      allow read: if isStaff();
+      allow write: if isHead();
+      // οι υπάλληλοι μπορούν μόνο να δηλώσουν έξοδο (αλλάζουν μόνο το exitAt)
+      allow update: if isStaff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['exitAt']);
+    }
     match /maps/{id}     { allow read: if isStaff(); allow write: if isHead(); }
 
     match /staff/{uid} {
