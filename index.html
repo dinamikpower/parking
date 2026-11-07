@@ -166,6 +166,12 @@
   .tabbar{position:sticky;top:var(--hh,150px);z-index:9;background:var(--bg);padding:12px 14px 8px}
   .tabbar .tabs{margin:0}
   html,body{overflow-x:clip;max-width:100%;overscroll-behavior-x:none}
+  .sum{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+  .sm{flex:1 1 84px;min-width:84px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;text-align:center;box-shadow:var(--shadow)}
+  .sm b{display:block;font-size:22px;font-weight:800;line-height:1.1}
+  .sm span{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-top:2px;white-space:nowrap}
+  .sm.tot{background:var(--accent);border-color:var(--accent)}
+  .sm.tot b,.sm.tot span{color:#fff}
   .ic{width:18px;height:18px;vertical-align:-4px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:6px}
   .cam .ic{margin:0;width:26px;height:26px;vertical-align:middle}
   .tab{white-space:nowrap}
@@ -389,6 +395,7 @@ if (LIVE) {
 /* ---------- Κατάσταση ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let mapsList = [];
 let openId = null, lastK = '', all = [], tab = 'active', editing = null, mapApi = null, pickedMap = null;   // pickedMap: ο χάρτης απ' όπου επιλέχθηκε η θέση
 
 const modeEl = $('#mode');
@@ -475,6 +482,17 @@ function carCard(v){
   </div>`;
 }
 
+// Σύνοψη για τον επικεφαλής: πόσα οχήματα υπάρχουν σε κάθε παρκινγκ (χάρτη) και συνολικά
+function summary(active){
+  if (!active.length) return '';
+  const known = new Set(mapsList.map(m => m.id));
+  const cnt = {}; let none = 0;
+  for (const v of active){ if (v.mapId && known.has(v.mapId)) cnt[v.mapId] = (cnt[v.mapId]||0) + 1; else none++; }
+  const rows = mapsList.map(m => `<div class="sm"><b>${cnt[m.id]||0}</b><span>${esc(m.name)}</span></div>`);
+  if (none && mapsList.length) rows.push(`<div class="sm"><b>${none}</b><span>Χωρίς χάρτη</span></div>`);
+  return `<div class="sum"><div class="sm tot"><b>${active.length}</b><span>Σύνολο</span></div>${mapsList.length >= 2 ? rows.join('') : ''}</div>`;
+}
+
 function render(){
   const raw = $('#q').value;
   const k = plateKey(raw);
@@ -493,7 +511,7 @@ function render(){
       if (mOut.length) html += `<h3>Προηγούμενες φορές</h3>` + mOut.slice(0,30).map(carCard).join('');
     }
   } else if (tab === 'active') {
-    html = active.length ? active.map(carCard).join('') : `<div class="empty">Δεν υπάρχουν οχήματα μέσα.<br>Πάτα «+ Νέο όχημα».</div>`;
+    html = (CAN ? summary(active) : '') + (active.length ? active.map(carCard).join('') : `<div class="empty">Δεν υπάρχουν οχήματα μέσα.<br>Πάτα «+ Νέο όχημα».</div>`);
   } else {
     const hist = all.filter(v=>v.exitAt);
     html = hist.length ? hist.slice(0,200).map(carCard).join('') : `<div class="empty">Δεν υπάρχει ιστορικό ακόμα.</div>`;
@@ -976,6 +994,7 @@ $('#mapF').onclick = ()=>mapApi.open({ mode:'pick', onPick: (label, mapId)=>{ $(
 
 let tt; function toast(m){ document.querySelector('.toast')?.remove(); const d=document.createElement('div'); d.className='toast'; d.textContent=m; document.body.append(d); clearTimeout(tt); tt=setTimeout(()=>d.remove(),2200); }
 
+store.subscribeMaps(l => { mapsList = l || []; render(); });
 mapApi = initMap({
   store, plateKey, esc, fmtT, fmtDur, toast, canEdit: () => CAN,
   getCars: () => all,
