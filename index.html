@@ -645,10 +645,43 @@ function stopScan(){
   scanning = false;
   stream?.getTracks().forEach(t=>t.stop()); stream = null; vid.srcObject = null; track = null; torchOn = false; $('#scanTools').hidden = true;
 }
-function accept(plate){
+/* Πρόταση χρώματος οχήματος από το κάδρο: δείγματα γύρω/πάνω από την πινακίδα, ταξινόμηση στα χρώματα της φόρμας */
+function nameColor(r,g,b){
+  r/=255; g/=255; b/=255; const mx = Math.max(r,g,b), mn = Math.min(r,g,b), d = mx-mn, v = mx, sat = mx ? d/mx : 0;
+  let h = 0; if (d){ h = mx===r ? ((g-b)/d)%6 : mx===g ? (b-r)/d+2 : (r-g)/d+4; h = (h*60+360)%360; }
+  if (v < .2) return 'Μαύρο';
+  if (sat < .13) return v > .8 ? 'Λευκό' : v > .55 ? 'Ασημί' : 'Γκρι';
+  if (h < 15 || h >= 345) return v < .5 ? 'Μπορντό' : 'Κόκκινο';
+  if (h < 45) return sat < .4 && v > .6 ? 'Μπεζ' : v < .55 ? 'Καφέ' : 'Πορτοκαλί';
+  if (h < 70) return sat < .35 && v > .6 ? 'Μπεζ' : 'Κίτρινο';
+  if (h < 170) return 'Πράσινο';
+  if (h < 265) return 'Μπλε';
+  return 'Μπορντό';
+}
+function sampleColor(src, box){
+  try {
+    const [x1,y1,x2,y2] = box, bw = x2-x1, bh = y2-y1, W = src.videoWidth || src.width, H = src.videoHeight || src.height;
+    const cv = document.createElement('canvas'); cv.width = cv.height = 12; const cx = cv.getContext('2d', { willReadFrequently:true });
+    const patches = [[x1-bw*.9, y1-bw*.75], [x1+bw*.35, y1-bw*.85], [x2+bw*.15, y1-bw*.75], [x1-bw*.9, y1-bw*.1], [x2+bw*.15, y1-bw*.1]];
+    const votes = {};
+    for (const [px,py] of patches){
+      const pw = bw*.75, ph = Math.max(bh*.7, bw*.25), sx = Math.max(0, Math.min(W-pw, px)), sy = Math.max(0, Math.min(H-ph, py));
+      if (pw < 4 || ph < 4) continue;
+      cx.drawImage(src, sx, sy, pw, ph, 0, 0, 12, 12);
+      const dta = cx.getImageData(0,0,12,12).data, rs = [], gs = [], bs = [];
+      for (let i = 0; i < dta.length; i += 4){ rs.push(dta[i]); gs.push(dta[i+1]); bs.push(dta[i+2]); }
+      const med = a => a.sort((x,y)=>x-y)[a.length>>1], n = nameColor(med(rs), med(gs), med(bs));
+      votes[n] = (votes[n]||0) + 1;
+    }
+    const top = Object.entries(votes).sort((a,b) => b[1]-a[1] || (a[0]==='Μαύρο') - (b[0]==='Μαύρο'))[0];
+    return top && top[1] >= 2 ? top[0] : '';      // μόνο όταν συμφωνούν τουλάχιστον 2 δείγματα
+  } catch { return ''; }
+}
+window.__sampleColor = sampleColor;
+function accept(plate, color){
   stopScan(); if (scanDlg.open) scanDlg.close();
   navigator.vibrate?.(60);
-  onScan?.(plate);
+  onScan?.(plate, color || '');
 }
 
 // Κύρια αναγνώριση (AI): εντοπισμός πινακίδας + ανάγνωση. Δέχεται το ίδιο αποτέλεσμα 2 φορές.
@@ -679,7 +712,7 @@ async function aiScan(){
         if (!shown) shown = p || r.text;
         if (p){
           seen[p] = (seen[p]||0) + 1;
-          if (seen[p] >= 2 || (r.conf >= .97 && r.score >= .8 && seen[p] >= 1 && /^[A-Z]{3}\d{4}$/.test(p) && n >= 2)) return accept(p);
+          if (seen[p] >= 2 || (r.conf >= .97 && r.score >= .8 && seen[p] >= 1 && /^[A-Z]{3}\d{4}$/.test(p) && n >= 2)) return accept(p, sampleColor(vid, r.box));
         }
       }
       out.innerHTML = (shown ? `Διαβάζω: <b>${esc(shown)}</b> …` : 'Στόχευσε την πινακίδα μέσα στο πράσινο πλαίσιο.')
@@ -755,7 +788,7 @@ $('#scanFile').addEventListener('change', async e=>{        // εναλλακτ�
     try {
       await loadAlpr();
       const res = await readPlates(bmp0, 0, 0, bmp0.width, bmp0.height);
-      for (const r of res){ const p = r.conf >= .5 ? parseAuto(r.text) : null; if (p) return accept(p); }
+      for (const r of res){ const p = r.conf >= .5 ? parseAuto(r.text) : null; if (p) return accept(p, sampleColor(bmp0, r.box)); }
     } catch(e){ console.warn('AI ALPR (photo):', e); }
     const w = await getWorker(); const bmp = bmp0;
     const sc = Math.min(1, 1800/Math.max(bmp.width,bmp.height));
@@ -780,7 +813,7 @@ function openFoundOnMap(){
 // Σάρωση πινακίδας: ρωτά τι θέλεις να γίνει (είσοδος / έξοδος / πού βρίσκεται)
 const chDlg = document.createElement('dialog'); chDlg.id = 'chDlg'; document.body.append(chDlg);
 chDlg.addEventListener('click', e => { if (e.target === chDlg) chDlg.close(); });
-function scanChoice(p){
+function scanChoice(p, col){
   const k = plateKey(p), cur = all.find(v => !v.exitAt && (v.plateKey||plateKey(v.plate)) === k);
   const where = cur && mapApi?.hasSpot(cur.location, cur.mapId);
   chDlg.innerHTML = `<div class="chb"><div class="chp"><span class="plate">${esc(p)}</span></div>
@@ -793,19 +826,19 @@ function scanChoice(p){
     if (e.target === chDlg) return chDlg.close();
     const c = e.target.closest('[data-c]')?.dataset.c; if (!c) return;
     chDlg.close();
-    if (c === 'in'){ ensureStaff(); $('#q').value = ''; render(); openForm(null, p); }
+    if (c === 'in'){ ensureStaff(); $('#q').value = ''; render(); openForm(null, p); if (col){ pickedColor = col; renderCols(); } }
     if (c === 'out' && cur){ ensureStaff(); try { await store.exit(cur.id); toast('Καταγράφηκε έξοδος · ' + cur.plate); } catch (err) { toast('Σφάλμα: ' + err.message); } $('#q').value = ''; render(); }
     if (c === 'where'){ $('#q').value = p; render(); if (!openFoundOnMap()) openId = cur.id, render(); }
   };
   chDlg.showModal();
 }
 window.__scanChoice = scanChoice;
-$('#camQ').onclick = ()=>openScan(p=>{ $('#q').value = p; render(); scanChoice(p); });
+$('#camQ').onclick = ()=>openScan((p, col)=>{ $('#q').value = p; render(); scanChoice(p, col); });
 let ofmT = 0;
 const ofmGo = () => { if (Date.now()-ofmT < 800) return; if (openFoundOnMap()) ofmT = Date.now(); };
 $('#q').addEventListener('keydown', e => { if (e.key==='Enter' || e.keyCode===13){ e.preventDefault(); ofmGo(); } });
 $('#q').addEventListener('search', ofmGo);                // το πλήκτρο «Αναζήτηση» του πληκτρολογίου κινητού
-$('#camF').onclick = ()=>openScan(p=>{ $('#fPlate').value = p; checkDup(); $('#fLoc').focus(); });
+$('#camF').onclick = ()=>openScan((p, col)=>{ $('#fPlate').value = p; if (col && !pickedColor){ pickedColor = col; renderCols(); } checkDup(); $('#fLoc').focus(); });
 
 /* ---------- Γεγονότα ---------- */
 $('#add').onclick = ()=>{ ensureStaff(); openForm(null, $('#q').value.trim()); };
