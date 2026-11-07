@@ -13,7 +13,9 @@ service cloud.firestore {
     match /vehicles/{id} {
       allow read: if isStaff();
       allow write: if isHead();
-      // οι υπάλληλοι μπορούν μόνο να δηλώσουν έξοδο (αλλάζουν μόνο exitAt/exitBy)
+      // οι υπάλληλοι μπορούν να καταχωρούν νέα οχήματα και να δηλώνουν έξοδο
+      allow create: if isStaff();
+      // (έξοδος) αλλάζουν μόνο exitAt/exitBy (αλλάζουν μόνο exitAt/exitBy)
       allow update: if isStaff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['exitAt', 'exitBy']);
     }
     match /maps/{id}     { allow read: if isStaff(); allow write: if isHead(); }

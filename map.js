@@ -721,7 +721,7 @@ export function initMap(ctx){
     const cars = occupancy().get(key(sp.l)) || [];
     if (!cars.length){
       sheet.innerHTML = `<b style="font-size:18px">Θέση ${esc(sp.l)}</b> <span class="m">· ελεύθερη</span>
-        <div class="mp-row">${CAN()?'<button class="btn primary" data-a="newhere">+ Νέο όχημα εδώ</button>':''}<button class="btn" data-a="closesheet">Κλείσιμο</button></div>${spEdit()}`;
+        <div class="mp-row"><button class="btn primary" data-a="newhere">+ Νέο όχημα εδώ</button><button class="btn" data-a="closesheet">Κλείσιμο</button></div>${spEdit()}`;
       return;
     }
     sheet.innerHTML = cars.map(v => `<div style="margin-bottom:10px"><span class="plate">${esc(v.plate)}</span>
@@ -732,7 +732,7 @@ export function initMap(ctx){
   dlg.addEventListener('click', async e => {
     const b = e.target.closest('[data-a]'); if (!b) return;
     const a = b.dataset.a;
-    if (!CAN() && ['newhere','newmap','renamemap','clearmap','newzone','img','pickimg','geoimg','cropimg','rename','del','movespot','done','undo','cx'].includes(a)) return;
+    if (!CAN() && ['newmap','renamemap','clearmap','newzone','img','pickimg','geoimg','cropimg','rename','del','movespot','done','undo','cx'].includes(a)) return;
     if (a==='close') return close();
     if (a==='closesheet') return closeSheet();
     if (a==='edit'){ if (!CAN()) return; editing = true; mode = 'browse'; closeSheet(); renderAll(); return; }

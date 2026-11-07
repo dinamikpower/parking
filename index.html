@@ -127,7 +127,6 @@
   .cols{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px}
   .cdot{width:32px;height:32px;border-radius:50%;border:2px solid rgba(100,116,139,.45);background:var(--c);padding:0;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
   .cdot.on{outline:3px solid var(--accent);outline-offset:2px}
-  body.ro .fab,body.ro #camF{display:none!important}
   .cdot.sug{outline:2px dashed var(--accent);outline-offset:2px}
   .bchips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
   .bchips .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -314,7 +313,7 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=35';
+import { initMap } from './map.js?v=36';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
@@ -526,7 +525,7 @@ function render(){
   if (k) {
     const m = all.filter(v => (v.plateKey||plateKey(v.plate)).includes(k));
     const mIn = m.filter(v=>!v.exitAt), mOut = m.filter(v=>v.exitAt);
-    if (!m.length) html = `<div class="empty">Καμία εγγραφή για «${esc(raw.toUpperCase())}».${CAN?'<br><br><button class="btn primary" id="addFromSearch">+ Καταχώρηση αυτής της πινακίδας</button>':''}</div>`;
+    if (!m.length) html = `<div class="empty">Καμία εγγραφή για «${esc(raw.toUpperCase())}».${true?'<br><br><button class="btn primary" id="addFromSearch">+ Καταχώρηση αυτής της πινακίδας</button>':''}</div>`;
     else {
       if (mIn.length) html += `<h3>Στο παρκινγκ τώρα</h3>` + mIn.map(carCard).join('');
       else html += `<div class="card"><b>Δεν είναι μέσα αυτή τη στιγμή.</b></div>`;
@@ -546,7 +545,7 @@ function render(){
 /* ---------- Φόρμα ---------- */
 const dlg = $('#dlg');
 function openForm(v, prefillPlate){
-  if (!CAN) return;
+  if (!CAN && v) return;           // οι υπάλληλοι μπορούν μόνο να καταχωρούν νέα, όχι να επεξεργάζονται
   editing = v || null;
   $('#dlgTitle').textContent = v?.id && !v.__again ? 'Επεξεργασία' : 'Νέο όχημα';
   $('#fPlate').value = v?.plate || prefillPlate || '';
@@ -1014,7 +1013,6 @@ chDlg.addEventListener('click', e => { if (e.target === chDlg) chDlg.close(); })
 function scanChoice(p, col){
   const k = plateKey(p), cur = all.find(v => !v.exitAt && (v.plateKey||plateKey(v.plate)) === k);
   const where = cur && mapApi?.hasSpot(cur.location, cur.mapId);
-  if (!CAN){ $('#q').value = p; render(); if (!openFoundOnMap() && cur){ openId = cur.id; render(); } return; }   // υπάλληλος: μόνο «πού βρίσκεται»
   chDlg.innerHTML = `<div class="chb"><div class="chp"><span class="plate" data-c="${ccOf({plate:p})}">${esc(p)}</span></div>
     <div class="chs">${cur ? `Μέσα στο παρκινγκ · 📍 ${esc(cur.location)}` : 'Δεν είναι μέσα αυτή τη στιγμή'}</div>
     <button class="btn ${cur ? '' : 'primary'} chbtn" data-c="in">⬇ Είσοδος <small>νέα καταχώρηση</small></button>
