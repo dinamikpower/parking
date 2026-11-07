@@ -14,15 +14,15 @@ const ERR = {
 const msg = e => ERR[e?.code] || (e?.code === 'permission-denied' ? 'Δεν έχεις δικαίωμα.' : (e?.message || 'Σφάλμα'));
 
 const CSS = `
-#lg{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 20% 10%,#3a2f25 0,#1d1a17 55%,#0c0b0a 100%);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+#lg{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 20% 10%,#2a2a2a 0,#111 55%,#000 100%);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
 #lg .box{width:min(380px,100%);background:#fff;color:#0f172a;border-radius:22px;padding:30px 24px 24px;box-shadow:0 30px 70px rgba(0,0,0,.5);text-align:center}
 #lg .logo{width:76px;height:76px;border-radius:20px;box-shadow:0 8px 22px rgba(29,78,216,.45);margin:-62px auto 14px;display:block;background:#fff}
 #lg .box{margin-top:44px} #lg label,#lg input{text-align:left}
 #lg h1{margin:0 0 4px;font-size:26px} #lg p{margin:0 0 16px;color:#64748b;font-size:15px}
 #lg label{display:block;font-size:13px;font-weight:600;color:#64748b;margin:12px 0 4px}
 #lg input{width:100%;box-sizing:border-box;padding:13px;border-radius:10px;border:1px solid #cbd5e1;font:inherit;font-size:17px}
-#lg button{width:100%;margin-top:16px;padding:14px;border-radius:12px;border:0;background:#c08a5a;box-shadow:0 6px 16px rgba(0,0,0,.4);color:#fff;font:inherit;font-weight:700;font-size:17px;cursor:pointer}
-#lg button.link{background:none;box-shadow:none;color:#a8744a;font-size:14px;font-weight:600;margin-top:10px;padding:8px}
+#lg button{width:100%;margin-top:16px;padding:14px;border-radius:12px;border:0;background:#6e6e6e;box-shadow:0 6px 16px rgba(0,0,0,.4);color:#fff;font:inherit;font-weight:700;font-size:17px;cursor:pointer}
+#lg button.link{background:none;box-shadow:none;color:#888;font-size:14px;font-weight:600;margin-top:10px;padding:8px}
 #lg button:disabled{opacity:.6}
 #lg .err{color:#b91c1c;font-size:14px;min-height:20px;margin-top:10px} #lg .ok{color:#166534}
 #ud{border:0;border-radius:16px;padding:0;width:min(520px,94vw);background:var(--card,#fff);color:var(--text,#0f172a)}
@@ -30,8 +30,8 @@ const CSS = `
 #ud .in{padding:18px} #ud h2{margin:0 0 4px;font-size:19px} #ud .sub{color:#64748b;font-size:14px;margin-bottom:12px}
 #ud .st{display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line,#e2e8f0)}
 #ud .st b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} #ud .st small{color:#64748b;display:block;font-weight:400;overflow:hidden;text-overflow:ellipsis}
-#ud button{font:inherit;cursor:pointer;padding:9px 12px;border-radius:10px;border:1px solid var(--bt-bd,#d9c8a8);background:var(--bt-bg,#ece0c8);color:var(--bt-fg,#623d22);font-weight:600}
-#ud button.p{background:#2563eb;border-color:#a8744a;color:#fff} #ud button.d{background:var(--rd-bg,#fee2e2);border-color:var(--rd-bd,#fca5a5);color:var(--rd-fg,#b91c1c)}
+#ud button{font:inherit;cursor:pointer;padding:9px 12px;border-radius:10px;border:1px solid var(--bt-bd,#cfcfcf);background:var(--bt-bg,#e8e8e8);color:var(--bt-fg,#222);font-weight:600}
+#ud button.p{background:#2563eb;border-color:#888;color:#fff} #ud button.d{background:var(--rd-bg,#fee2e2);border-color:var(--rd-bd,#fca5a5);color:var(--rd-fg,#b91c1c)}
 #ud input,#ud select{width:100%;box-sizing:border-box;padding:11px;border-radius:10px;border:1px solid var(--line,#cbd5e1);background:var(--bg,#fff);color:var(--text,#0f172a);font:inherit;font-size:16px;margin-top:6px}
 #ud .row{display:flex;gap:8px;margin-top:12px} #ud .row>*{flex:1} #ud .m{min-height:20px;font-size:14px;margin-top:8px}
 #userBtn{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:99px;padding:4px 10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

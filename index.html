@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#141210">
+<meta name="theme-color" content="#0d0d0d">
 <script>document.documentElement.dataset.theme=localStorage.getItem('parking-theme')||'dark'</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -139,18 +139,18 @@
   #chDlg .chbtn small{display:block;font-size:12px;font-weight:500;opacity:.85;margin-top:2px}
   #chDlg .chbtn:disabled{opacity:.45}
   #chDlg .chx{background:transparent;border:0;color:var(--muted)}
-  .toast{background:#2b2118;border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:11px 18px}
+  .toast{background:#222;border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:11px 18px}
 
   /* ===== Θέματα: σκούρο (προεπιλογή) και φωτεινό — μινιμαλ ===== */
-  :root,html[data-theme=light]{ --bg:#f3ece0; --card:#fbf7ef; --text:#2b2118; --muted:#7d6e5e; --line:#e2d7c4; --accent:#7a4e2d; --accent-d:#623d22;
-    --surf:#fbf7ef; --field:#ece3d3; --field-f:#fff; --seg:#e8dfcd; --seg-on:#fbf7ef; --seg-fg:#7a4e2d; --badge:#ece3d3; --badge-fg:#6b5a48; --edge:#d3c6af;
-    --in-bg:#ece0c8; --in-fg:#7a4e2d; --out-bg:#ece3d3; --out-fg:#7d6e5e; --strip:#2b2118; --chip:#fbf7ef; --inp:#f6f0e4;
-    --bt-bg:#ece0c8; --bt-fg:#623d22; --bt-bd:#d9c8a8; --rd-bg:#f6e4df; --rd-fg:#9a3b2b; --rd-bd:#e6bdb3;
-    --shadow:0 1px 2px rgba(43,33,24,.06),0 2px 8px rgba(43,33,24,.06); --open-shadow:0 6px 20px rgba(43,33,24,.14); color-scheme:light }
-  html[data-theme=dark]{ --bg:#141210; --card:#1d1a17; --text:#efe6d6; --muted:#9a8f80; --line:#2d2822; --accent:#c08a5a; --accent-d:#a8744a;
-    --surf:#141210; --field:#221e1a; --field-f:#29241f; --seg:#1b1815; --seg-on:#2f2922; --seg-fg:#efe6d6; --badge:#221e1a; --badge-fg:#b5a898; --edge:#3a332b;
-    --in-bg:rgba(201,160,110,.14); --in-fg:#d9b88a; --out-bg:#221e1a; --out-fg:#9a8f80; --strip:#0c0b0a; --chip:#221e1a; --inp:#221e1a;
-    --bt-bg:#2a231c; --bt-fg:#e0c29a; --bt-bd:#4a3d2f; --rd-bg:#2a1b17; --rd-fg:#e8a898; --rd-bd:#4d2e26;
+  :root,html[data-theme=light]{ --bg:#f2f2f2; --card:#fff; --text:#111; --muted:#6b6b6b; --line:#e0e0e0; --accent:#222; --accent-d:#000;
+    --surf:#fff; --field:#ebebeb; --field-f:#fff; --seg:#e6e6e6; --seg-on:#fff; --seg-fg:#111; --badge:#ebebeb; --badge-fg:#555; --edge:#cfcfcf;
+    --in-bg:#e4e4e4; --in-fg:#111; --out-bg:#ebebeb; --out-fg:#6b6b6b; --strip:#111; --chip:#fff; --inp:#f6f6f6;
+    --bt-bg:#e8e8e8; --bt-fg:#222; --bt-bd:#cfcfcf; --rd-bg:#efefef; --rd-fg:#333; --rd-bd:#cfcfcf;
+    --shadow:0 1px 2px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.06); --open-shadow:0 6px 20px rgba(0,0,0,.14); color-scheme:light }
+  html[data-theme=dark]{ --bg:#0d0d0d; --card:#171717; --text:#f2f2f2; --muted:#9a9a9a; --line:#2a2a2a; --accent:#6e6e6e; --accent-d:#5a5a5a;
+    --surf:#0d0d0d; --field:#1c1c1c; --field-f:#232323; --seg:#151515; --seg-on:#2c2c2c; --seg-fg:#fff; --badge:#1c1c1c; --badge-fg:#b0b0b0; --edge:#363636;
+    --in-bg:#262626; --in-fg:#f2f2f2; --out-bg:#1c1c1c; --out-fg:#9a9a9a; --strip:#000; --chip:#1c1c1c; --inp:#1c1c1c;
+    --bt-bg:#232323; --bt-fg:#e0e0e0; --bt-bd:#3a3a3a; --rd-bg:#222; --rd-fg:#ddd; --rd-bd:#3a3a3a;
     --shadow:none; --open-shadow:0 8px 24px rgba(0,0,0,.5); color-scheme:dark }
   body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--strip);z-index:60}
   header{background:var(--surf);color:var(--text);border-radius:0;padding:calc(env(safe-area-inset-top) + 32px) 14px 12px;box-shadow:0 1px 0 var(--line)}
@@ -190,12 +190,12 @@
   .tab.on{background:var(--seg-on);color:var(--seg-fg);box-shadow:none}
   .card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
   .card.open{border-color:var(--accent);box-shadow:var(--open-shadow)}
-  .plate{background:#f4efe4;border-color:#2b2118;color:#2b2118;box-shadow:none}
-  .plate::before{background:#3a332b}
+  .plate{background:#f4f4f4;border-color:#111;color:#111;box-shadow:none}
+  .plate::before{background:#333}
   .btn.primary,.fab{background:var(--accent);border-color:var(--accent);color:#fff}
   .fab{box-shadow:0 6px 18px rgba(0,0,0,.35)}
   .btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
-  .btn.nav{background:#6f6457;border-color:#6f6457;color:#fff}
+  .btn.nav{background:#555;border-color:#555;color:#fff}
   dialog{background:var(--card);color:var(--text);border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
   dialog::backdrop{background:rgba(0,0,0,.55)}
   input,textarea,select{background:var(--inp);color:var(--text);border-color:var(--line)}
@@ -298,7 +298,7 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=34';
+import { initMap } from './map.js?v=35';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
@@ -323,7 +323,7 @@ if (LIVE) {
   const fs = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
   const app = initializeApp(CFG);
   const db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) });
-  ({ requireLogin: window.__rl } = await import('./auth.js?v=7'));
+  ({ requireLogin: window.__rl } = await import('./auth.js?v=8'));
   ME = await window.__rl(app, db, fs, CFG);           // δεν προχωράει η εφαρμογή αν δεν γίνει είσοδος
   const col = fs.collection(db, 'vehicles');
   store = {
@@ -407,7 +407,7 @@ modeEl.title = LIVE ? 'Συγχρονισμός σε πραγματικό χρό
 
 const CAN = !ME || ME.head;   // false = υπάλληλος: μόνο προβολή
 // Θέμα: σκούρο (προεπιλογή) ή φωτεινό
-const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').textContent = t === 'dark' ? '☀️' : '🌙'; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#141210' : '#fbf7ef'); };
+const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').textContent = t === 'dark' ? '☀️' : '🌙'; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#0d0d0d' : '#ffffff'); };
 applyTheme(document.documentElement.dataset.theme || 'dark');
 // Η κεφαλίδα και οι καρτέλες μένουν σταθερές πάνω όταν γίνεται scroll
 const setHH = () => document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px');

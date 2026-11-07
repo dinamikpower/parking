@@ -16,11 +16,11 @@ const CSS = `
 .lv-lab:before{display:none}
 .lv-dist{background:linear-gradient(135deg,#ea580c,#fb923c);box-shadow:0 2px 8px rgba(0,0,0,.4);color:#fff;border:0;font-weight:700;font-size:13px;padding:2px 8px;border-radius:7px}
 .lv-dist:before{display:none}
-.lv-vtx{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #c08a5a;box-sizing:border-box;transform:translate(-50%,-50%)}
-.lv-me{width:18px;height:18px;border-radius:50%;background:#c08a5a;border:3px solid #fff;box-shadow:0 0 0 2px rgba(192,138,90,.5),0 1px 6px rgba(0,0,0,.6);transform:translate(-50%,-50%)}
+.lv-vtx{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #888;box-sizing:border-box;transform:translate(-50%,-50%)}
+.lv-me{width:18px;height:18px;border-radius:50%;background:#888;border:3px solid #fff;box-shadow:0 0 0 2px rgba(136,136,136,.5),0 1px 6px rgba(0,0,0,.6);transform:translate(-50%,-50%)}
 .lv-btns{display:flex;flex-direction:column;gap:8px}
 .lv-btns button{width:44px;height:44px;border-radius:12px;border:0;background:#fff;color:#111;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-.lv-btns button.on{background:#c08a5a;color:#fff}
+.lv-btns button.on{background:#888;color:#fff}
 .mp-live .leaflet-control-attribution{font-size:10px;border-radius:8px 0 0 0}
 .mp-live .leaflet-bar{border:0!important;border-radius:14px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 .mp-live .leaflet-bar a{width:42px;height:42px;line-height:42px;font-size:19px;border-bottom:1px solid #e2e8f0}
@@ -76,7 +76,7 @@ export async function createLive(host, h){
     data.clearLayers(); over.clearLayers();
     (d.shapes||[]).forEach((sh, i) => {
       if (!Array.isArray(sh.pts) || sh.pts.length < 2) return;
-      const ll = sh.pts.map(p => [+p[1], +p[0]]), c = /^#[0-9a-f]{6}$/i.test(sh.c) ? sh.c : '#c08a5a';
+      const ll = sh.pts.map(p => [+p[1], +p[0]]), c = /^#[0-9a-f]{6}$/i.test(sh.c) ? sh.c : '#888';
       const lay = sh.t==='g' ? L.polygon(ll, { color:c, weight:2, fillColor:c, fillOpacity:.22, bubblingMouseEvents:false })
                              : L.polyline(ll, { color:c, weight:2, bubblingMouseEvents:false });
       lay.on('click', e => { if (blockClick()) return; L.DomEvent.stop(e); h.onShape?.(i, evXY(e)); });
@@ -95,7 +95,7 @@ export async function createLive(host, h){
     });
     if (d.pend){
       const ll = d.pend.pts.map(p => [+p[1], +p[0]]);
-      if (ll.length > 1) L.polyline(ll, { color:d.color||'#c08a5a', weight:3, dashArray:'6 6', interactive:false }).addTo(over);
+      if (ll.length > 1) L.polyline(ll, { color:d.color||'#888', weight:3, dashArray:'6 6', interactive:false }).addTo(over);
       ll.forEach(p => L.marker(p, { icon:L.divIcon({ className:'lv-ic', iconSize:[0,0], html:'<div class="lv-vtx"></div>' }), interactive:false }).addTo(over));
     }
     if (route) route.addTo(over);
@@ -155,7 +155,7 @@ export async function createLive(host, h){
     const { latitude:lat, longitude:lng, accuracy } = pos.coords; me = { lat, lng, acc:accuracy };
     if (!meMarker){
       meMarker = L.marker([lat, lng], { icon:L.divIcon({ className:'lv-ic', iconSize:[0,0], html:'<div class="lv-me"></div>' }), interactive:false, zIndexOffset:1000 }).addTo(map);
-      meCircle = L.circle([lat, lng], { radius:accuracy, color:'#c08a5a', weight:1, fillOpacity:.1, interactive:false }).addTo(map);
+      meCircle = L.circle([lat, lng], { radius:accuracy, color:'#888', weight:1, fillOpacity:.1, interactive:false }).addTo(map);
     } else { meMarker.setLatLng([lat, lng]); meCircle.setLatLng([lat, lng]).setRadius(accuracy); }
     drawLine(); h.onMe?.(me);
   }
