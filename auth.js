@@ -28,11 +28,11 @@ const CSS = `
 #ud{border:0;border-radius:16px;padding:0;width:min(520px,94vw);background:var(--card,#fff);color:var(--text,#0f172a)}
 #ud::backdrop{background:rgba(0,0,0,.55)}
 #ud .in{padding:18px} #ud h2{margin:0 0 4px;font-size:19px} #ud .sub{color:#64748b;font-size:14px;margin-bottom:12px}
-#ud .st{display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid #e2e8f0}
+#ud .st{display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line,#e2e8f0)}
 #ud .st b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} #ud .st small{color:#64748b;display:block;font-weight:400;overflow:hidden;text-overflow:ellipsis}
-#ud button{font:inherit;cursor:pointer;padding:9px 12px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:inherit;font-weight:600}
-#ud button.p{background:#2563eb;border-color:#2563eb;color:#fff} #ud button.d{color:#b91c1c}
-#ud input,#ud select{width:100%;box-sizing:border-box;padding:11px;border-radius:10px;border:1px solid #cbd5e1;font:inherit;font-size:16px;margin-top:6px}
+#ud button{font:inherit;cursor:pointer;padding:9px 12px;border-radius:10px;border:1px solid var(--bt-bd,#93c5fd);background:var(--bt-bg,#dbeafe);color:var(--bt-fg,#1d4ed8);font-weight:600}
+#ud button.p{background:#2563eb;border-color:#2563eb;color:#fff} #ud button.d{background:var(--rd-bg,#fee2e2);border-color:var(--rd-bd,#fca5a5);color:var(--rd-fg,#b91c1c)}
+#ud input,#ud select{width:100%;box-sizing:border-box;padding:11px;border-radius:10px;border:1px solid var(--line,#cbd5e1);background:var(--bg,#fff);color:var(--text,#0f172a);font:inherit;font-size:16px;margin-top:6px}
 #ud .row{display:flex;gap:8px;margin-top:12px} #ud .row>*{flex:1} #ud .m{min-height:20px;font-size:14px;margin-top:8px}
 #userBtn{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:99px;padding:4px 10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 `;
