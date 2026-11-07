@@ -2,7 +2,7 @@
 <html lang="el">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
 <meta name="theme-color" content="#0d0d0d">
 <script>document.documentElement.dataset.theme=localStorage.getItem('parking-theme')||'dark'</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -206,14 +206,14 @@
   .bchips .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   .tag.in{background:var(--in-bg);color:var(--in-fg)}
   .tag.out{background:var(--out-bg);color:var(--out-fg)}
-  #dlg{position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;width:min(520px,100vw);max-width:100vw;border-radius:22px 22px 0 0;max-height:calc(var(--vvh,100dvh) - 12px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 -10px 40px rgba(0,0,0,.5);animation:sheetUp .3s cubic-bezier(.2,.85,.25,1)}
+  #dlg{position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;width:min(520px,100vw);max-width:100vw;border-radius:22px 22px 0 0;max-height:calc(100dvh - 12px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 -10px 40px rgba(0,0,0,.5);animation:sheetUp .3s cubic-bezier(.2,.85,.25,1)}
   html.lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
   html.lock{overflow:hidden;overscroll-behavior:none}
   #dlg::backdrop{animation:fadeIn .25s ease}
   #dlg form::before{content:"";display:block;width:40px;height:4px;border-radius:4px;background:var(--edge);margin:-6px auto 12px}
   @keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-  #dlg form{padding-bottom:0}
+  #dlg form{padding-bottom:var(--kb,0px)}
   #dlg .actions{position:sticky;bottom:0;background:var(--card);margin:12px -18px 0;padding:10px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);z-index:2;flex-wrap:nowrap}
   .card.open>.row{flex-wrap:wrap;row-gap:6px}
   .card.open>.row .tag{display:none}
@@ -583,16 +583,20 @@ $('#fCancel').onclick = ()=>dlg.close();
 // Πληκτρολόγιο: η φόρμα ακολουθεί το ορατό τμήμα της οθόνης, Enter πάει στο επόμενο πεδίο, τα κουμπιά επιλογής κλείνουν το πληκτρολόγιο
 (() => {
   const vv = window.visualViewport;
+  // Το πληκτρολόγιο καλύπτει τη φόρμα χωρίς να τη μετακινεί· κυλάμε μέσα στη φόρμα ώστε το πεδίο να μένει πάνω από αυτό
   const fit = () => {
     if (!dlg.open) return;
-    const h = vv ? vv.height : innerHeight, top = vv ? vv.offsetTop : 0;
-    dlg.style.setProperty('--vvh', h + 'px');
-    dlg.style.bottom = Math.max(0, innerHeight - (top + h)) + 'px';
-    const a = document.activeElement; if (a && dlg.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) setTimeout(() => a.scrollIntoView({ block:'center', behavior:'smooth' }), 60);
+    const kb = vv ? Math.max(0, innerHeight - vv.height - vv.offsetTop) : 0;
+    dlg.style.setProperty('--kb', kb > 80 ? kb + 'px' : '0px');
+    const a = document.activeElement;
+    if (kb > 80 && a && dlg.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) {
+      const r = a.getBoundingClientRect(), limit = (vv ? vv.height + vv.offsetTop : innerHeight) - 12;
+      if (r.bottom > limit) dlg.scrollTop += r.bottom - limit;
+    }
   };
   vv?.addEventListener('resize', fit); vv?.addEventListener('scroll', fit);
   dlg.addEventListener('focusin', () => setTimeout(fit, 250));
-  dlg.addEventListener('close', () => { ['bottom'].forEach(p => dlg.style.removeProperty(p)); dlg.style.removeProperty('--vvh'); });
+  dlg.addEventListener('close', () => { ['bottom'].forEach(p => dlg.style.removeProperty(p)); dlg.style.removeProperty('--kb'); });
   $('#fPlate').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#fLoc').focus(); } });
   $('#fLoc').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); e.target.blur(); } });
   $('#fPhone').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); e.target.blur(); } });
