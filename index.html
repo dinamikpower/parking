@@ -596,6 +596,15 @@ $('#fCancel').onclick = ()=>dlg.close();
     }
   };
   vv?.addEventListener('resize', fit); vv?.addEventListener('scroll', fit);
+  // πάνω από το iOS: ενημέρωση σε κάθε καρέ όσο είναι ανοιχτή η φόρμα, ώστε να μη φαίνεται καθυστέρηση στη διόρθωση
+  let raf = 0, lastT = -1;
+  const loop = () => {
+    if (!dlg.open){ raf = 0; lastT = -1; return; }
+    const t = vv ? Math.round(vv.offsetTop) : 0;
+    if (t !== lastT){ lastT = t; dlg.style.transform = t > 0 ? `translateY(${t}px)` : ''; }
+    raf = requestAnimationFrame(loop);
+  };
+  dlg.addEventListener('focusin', () => { if (!raf) raf = requestAnimationFrame(loop); });
   dlg.addEventListener('focusin', () => setTimeout(fit, 250));
   dlg.addEventListener('close', () => { ['bottom'].forEach(p => dlg.style.removeProperty(p)); dlg.style.removeProperty('--kb'); dlg.style.transform = ''; });
   $('#fPlate').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#fLoc').focus(); } });
