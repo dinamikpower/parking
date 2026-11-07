@@ -209,9 +209,6 @@
   #dlg{position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;width:min(520px,100vw);max-width:100vw;border-radius:22px 22px 0 0;max-height:calc(var(--vvh,100dvh) - 12px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 -10px 40px rgba(0,0,0,.5);animation:sheetUp .3s cubic-bezier(.2,.85,.25,1)}
   html.lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
   html.lock{overflow:hidden;overscroll-behavior:none}
-  .ctry{display:flex;align-items:center;gap:10px;margin:8px 0 0}
-  .ctry label{margin:0;flex:1}
-  .ctry select{width:auto;min-width:84px;padding:8px 10px;border-radius:10px}
   #dlg::backdrop{animation:fadeIn .25s ease}
   #dlg form::before{content:"";display:block;width:40px;height:4px;border-radius:4px;background:var(--edge);margin:-6px auto 12px}
   @keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
@@ -263,7 +260,6 @@
       <input class="pl" id="fPlate" required autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="ΥΚΑ1234">
       <button class="cam" id="camF" type="button" aria-label="Σάρωση πινακίδας"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3"/><path d="M8 8v7M12 8v7M16 8v7" stroke-width="2.2"/></svg></button>
     </div>
-    <div class="ctry"><label for="fCountry">Χώρα πινακίδας</label><select id="fCountry"><option value="">—</option><option>GR</option><option>AL</option><option>BG</option><option>RO</option><option>MK</option><option>RS</option><option>TR</option><option>CY</option><option>DE</option><option>IT</option><option>FR</option><option>NL</option><option>BE</option><option>AT</option><option>CH</option><option>GB</option><option>PL</option><option>CZ</option><option>UA</option><option>GE</option></select></div>
     <div id="fWarn"></div>
     <label>Θέση</label>
     <div class="plrow">
@@ -554,7 +550,6 @@ function openForm(v, prefillPlate){
   $('#fBrand').value = v?.brand || ''; pickedColor = v?.color || ''; sugColor = ''; brandOther = false; renderCols(); renderBrands();
   $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = v?.phone || ''; $('#fNote').value = v?.note || '';
   if (v?.__again) editing = null;
-  ctryManual = !!v?.country && !v.__again; $('#fCountry').value = v?.country || ''; if (!ctryManual) syncCountry();
   checkDup(); renderChips(); prefillFromHistory(); dlg.showModal();
   setTimeout(()=>($('#fPlate').value ? $('#fLoc') : $('#fPlate')).focus(), 50);
 }
@@ -570,14 +565,7 @@ function renderChips(){
 }
 $('#chips').addEventListener('click',e=>{ if(e.target.classList.contains('chip')){ $('#fLoc').value = e.target.textContent; pickedMap = null; } });
 $('#fLoc').addEventListener('input',()=>{ pickedMap = null; });
-let ctryManual = false;
-function syncCountry(){
-  if (ctryManual) return;
-  const c = inferCountry($('#fPlate').value);
-  $('#fCountry').value = c;
-}
-$('#fCountry').addEventListener('change', () => { ctryManual = true; });
-$('#fPlate').addEventListener('input',()=>{ checkDup(); prefillFromHistory(); syncCountry(); });
+$('#fPlate').addEventListener('input',()=>{ checkDup(); prefillFromHistory(); });
 // Όταν είναι ανοιχτό παράθυρο, η σελίδα πίσω δεν κυλάει
 (() => {
   let n = 0, y = 0;
@@ -615,7 +603,7 @@ $('#fCancel').onclick = ()=>dlg.close();
 $('#form').addEventListener('submit', async e=>{
   e.preventDefault();
   const plate = $('#fPlate').value.trim().toUpperCase();
-  const data = { plate, country: $('#fCountry').value, plateKey: plateKey(plate), location: $('#fLoc').value.trim(),
+  const data = { plate, country: inferCountry(plate) || (editing && editing.country) || '', plateKey: plateKey(plate), location: $('#fLoc').value.trim(),
     brand: $('#fBrand').value.trim(), color: pickedColor, keyNo: $('#fKey').value.trim(), phone: $('#fPhone').value.trim(), note: $('#fNote').value.trim(), mapId: pickedMap || null };
   if (!data.plateKey || !data.location) return;
   try {
@@ -1035,7 +1023,7 @@ let ofmT = 0;
 const ofmGo = () => { if (Date.now()-ofmT < 800) return; if (openFoundOnMap()) ofmT = Date.now(); };
 $('#q').addEventListener('keydown', e => { if (e.key==='Enter' || e.keyCode===13){ e.preventDefault(); ofmGo(); } });
 $('#q').addEventListener('search', ofmGo);                // το πλήκτρο «Αναζήτηση» του πληκτρολογίου κινητού
-$('#camF').onclick = ()=>openScan((p, col)=>{ $('#fPlate').value = p; syncCountry(); if (col && !pickedColor){ sugColor = col; renderCols(); } checkDup(); prefillFromHistory(); $('#fLoc').focus(); });
+$('#camF').onclick = ()=>openScan((p, col)=>{ $('#fPlate').value = p; if (col && !pickedColor){ sugColor = col; renderCols(); } checkDup(); prefillFromHistory(); $('#fLoc').focus(); });
 
 /* ---------- Γεγονότα ---------- */
 $('#stats').onclick = e => { const z = e.target.closest('.stat.z'); if (!z) return; zoneF = zoneF === z.dataset.z ? '' : z.dataset.z; tab = 'active'; $('#q').value = ''; render(); };
