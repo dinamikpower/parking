@@ -127,6 +127,10 @@
   .btn.go{background:linear-gradient(135deg,#15803d,#22c55e);border-color:transparent}
   h3{font-size:12px;font-weight:800;letter-spacing:.8px}
   dialog{border-radius:20px;box-shadow:0 24px 60px rgba(2,8,23,.45)}
+  .cols{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px}
+  .cdot{width:32px;height:32px;border-radius:50%;border:2px solid rgba(100,116,139,.45);background:var(--c);padding:0;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+  .cdot.on{outline:3px solid var(--accent);outline-offset:2px}
+  .cdot.sm{width:14px;height:14px;flex:none;cursor:default;border-width:1.5px;box-shadow:none}
   #chDlg .chb{padding:20px 18px 16px;display:flex;flex-direction:column;gap:10px;text-align:center}
   #chDlg .chp .plate{font-size:26px}
   #chDlg .chs{color:var(--muted);font-size:15px;margin-bottom:4px}
@@ -184,6 +188,10 @@
       <div><label>Αρ. κλειδιού</label><input id="fKey" inputmode="numeric" placeholder="προαιρετικό"></div>
       <div><label>Τηλέφωνο πελάτη</label><input id="fPhone" inputmode="tel" placeholder="προαιρετικό"></div>
     </div>
+    <label>Μάρκα και χρώμα</label>
+    <input id="fBrand" list="brands" placeholder="Μάρκα (π.χ. Toyota)" autocomplete="off" autocapitalize="words">
+    <datalist id="brands"><option>Toyota<option>Volkswagen<option>Opel<option>Fiat<option>Peugeot<option>Citroën<option>Renault<option>Nissan<option>Hyundai<option>Kia<option>Ford<option>Mercedes-Benz<option>BMW<option>Audi<option>Skoda<option>Seat<option>Suzuki<option>Mazda<option>Honda<option>Mitsubishi<option>Dacia<option>Smart<option>Mini<option>Volvo<option>Jeep<option>Land Rover<option>Porsche<option>Tesla<option>Alfa Romeo<option>Lancia<option>Daihatsu<option>Subaru<option>Chevrolet<option>Lexus<option>Yamaha<option>Honda (μηχανή)<option>Piaggio<option>Vespa</datalist>
+    <div class="cols" id="cols"></div>
     <label>Σημείωση</label>
     <input id="fNote" placeholder="προαιρετικό">
     <div class="actions">
@@ -335,15 +343,25 @@ function fmtDur(a,b){
   return h>=24 ? `${Math.floor(h/24)}μ ${h%24}ω` : h>0 ? `${h}ω ${m%60}λ` : `${m}λ`;
 }
 
+/* ---------- Χρώματα οχημάτων ---------- */
+const COLORS = [['Λευκό','#f8fafc'],['Μαύρο','#111827'],['Γκρι','#6b7280'],['Ασημί','#cbd5e1'],['Μπλε','#2563eb'],['Κόκκινο','#dc2626'],['Πράσινο','#16a34a'],['Κίτρινο','#facc15'],['Πορτοκαλί','#f97316'],['Καφέ','#92400e'],['Μπεζ','#d6c3a1'],['Μπορντό','#7f1d1d']];
+const colHex = n => (COLORS.find(c => c[0]===n) || [])[1] || null;
+let pickedColor = '';
+function renderCols(){
+  $('#cols').innerHTML = COLORS.map(([n,h]) => `<button type="button" class="cdot${pickedColor===n?' on':''}" data-col="${n}" style="--c:${h}" title="${n}" aria-label="${n}"></button>`).join('');
+}
+$('#cols').addEventListener('click', e => { const b = e.target.closest('[data-col]'); if (!b) return; pickedColor = pickedColor===b.dataset.col ? '' : b.dataset.col; renderCols(); });
+
 /* ---------- Απόδοση ---------- */
 function carCard(v){
   const inside = !v.exitAt;
   const phone = v.phone ? `<a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>` : '';
   return `<div class="card${v.id===openId?' open':''}" data-id="${v.id}">
-    <div class="row"><span class="plate">${esc(v.plate)}</span><span class="loc">📍 ${esc(v.location)}</span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
+    <div class="row"><span class="plate">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc">📍 ${esc(v.location)}</span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
     <div class="more"><div>
     <div class="meta">
       <span>⏱ ${fmtT(v.entryAt)}${inside?` · ${fmtDur(v.entryAt,Date.now())}`:` → ${fmtT(v.exitAt)} · ${fmtDur(v.entryAt,v.exitAt)}`}</span>
+      ${(v.brand||v.color)?`<span>🚗 ${esc([v.brand,v.color].filter(Boolean).join(' · '))}</span>`:''}
       ${v.keyNo?`<span>🔑 ${esc(v.keyNo)}</span>`:''}${phone}
       ${v.note?`<span>📝 ${esc(v.note)}</span>`:''}
       ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}
@@ -389,6 +407,7 @@ function openForm(v, prefillPlate){
   $('#fPlate').value = v?.plate || prefillPlate || '';
   $('#fLoc').value = v?.__again ? '' : (v?.location || '');
   pickedMap = v?.__again ? null : (v?.mapId || null);
+  $('#fBrand').value = v?.brand || ''; pickedColor = v?.color || ''; renderCols();
   $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = v?.phone || ''; $('#fNote').value = v?.note || '';
   if (v?.__again) editing = null;
   checkDup(); renderChips(); dlg.showModal();
@@ -413,7 +432,7 @@ $('#form').addEventListener('submit', async e=>{
   e.preventDefault();
   const plate = $('#fPlate').value.trim().toUpperCase();
   const data = { plate, plateKey: plateKey(plate), location: $('#fLoc').value.trim(),
-    keyNo: $('#fKey').value.trim(), phone: $('#fPhone').value.trim(), note: $('#fNote').value.trim(), mapId: pickedMap || null };
+    brand: $('#fBrand').value.trim(), color: pickedColor, keyNo: $('#fKey').value.trim(), phone: $('#fPhone').value.trim(), note: $('#fNote').value.trim(), mapId: pickedMap || null };
   if (!data.plateKey || !data.location) return;
   try {
     if (editing?.id) await store.update(editing.id, data);
