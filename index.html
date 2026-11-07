@@ -163,6 +163,8 @@
   .badge{background:var(--badge);color:var(--badge-fg);backdrop-filter:none}
   .badge.live{background:var(--in-bg);color:var(--in-fg)}
   .badge.demo{background:rgba(234,179,8,.16);color:#ca8a04}
+  .tabbar{position:sticky;top:var(--hh,150px);z-index:9;background:var(--bg);padding:12px 14px 8px}
+  .tabbar .tabs{margin:0}
   .badge{white-space:nowrap}
   h1 small{white-space:nowrap;font-size:10px;letter-spacing:.4px}
   #themeBtn{border:0;font:inherit;font-size:14px;line-height:1;padding:5px 9px;cursor:pointer}
@@ -217,11 +219,11 @@
   </div>
 </header>
 
-<div class="tabs">
+<div class="tabbar"><div class="tabs">
   <button class="tab on" data-tab="active">Μέσα τώρα</button>
   <button class="tab" data-tab="history">Ιστορικό</button>
   <button class="tab" data-tab="map">🗺 Χάρτης</button>
-</div>
+</div></div>
 
 <main id="list"></main>
 
@@ -394,6 +396,9 @@ const CAN = !ME || ME.head;   // false = υπάλληλος: μόνο προβο
 // Θέμα: σκούρο (προεπιλογή) ή φωτεινό
 const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').textContent = t === 'dark' ? '☀️' : '🌙'; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#0b0b0d' : '#ffffff'); };
 applyTheme(document.documentElement.dataset.theme || 'dark');
+// Η κεφαλίδα και οι καρτέλες μένουν σταθερές πάνω όταν γίνεται scroll
+const setHH = () => document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px');
+setHH(); new ResizeObserver(setHH).observe(document.querySelector('header')); window.addEventListener('resize', setHH);
 $('#themeBtn').onclick = () => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('parking-theme', t); } catch {} applyTheme(t); };
 document.body.classList.toggle('ro', !CAN);
 const staff = () => ME ? ME.name : (localStorage.getItem('parking-staff') || '');
