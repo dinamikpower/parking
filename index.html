@@ -207,6 +207,9 @@
   .bchips .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   .tag.in{background:var(--in-bg);color:var(--in-fg)}
   .tag.out{background:var(--out-bg);color:var(--out-fg)}
+  #dlg{max-height:calc(var(--vvh,100dvh) - 16px);overflow-y:auto;overscroll-behavior:contain}
+  #dlg form{padding-bottom:0}
+  #dlg .actions{position:sticky;bottom:0;background:var(--card);margin:12px -18px 0;padding:10px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);z-index:2;flex-wrap:nowrap}
   .card.open>.row{flex-wrap:wrap;row-gap:6px}
   .card.open>.row .tag{display:none}
   .card.open .chev{margin-left:auto}
@@ -249,27 +252,27 @@
     <h2 id="dlgTitle">Νέο όχημα</h2>
     <label>Πινακίδα</label>
     <div class="plrow">
-      <input class="pl" id="fPlate" required autocomplete="off" autocapitalize="characters" placeholder="ΥΚΑ1234">
+      <input class="pl" id="fPlate" required autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="ΥΚΑ1234">
       <button class="cam" id="camF" type="button" aria-label="Σάρωση πινακίδας">📷</button>
     </div>
     <div id="fWarn"></div>
     <label>Θέση</label>
     <div class="plrow">
-      <input id="fLoc" required placeholder="π.χ. Α12 ή Όροφος 2 - Β14">
+      <input id="fLoc" required autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="π.χ. Α12 ή Όροφος 2 - Β14">
       <button class="cam" id="mapF" type="button" aria-label="Επιλογή από χάρτη" style="background:var(--accent);color:#fff"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.2v13.6L9 17.6l6 2.2 6-2.2V4.2L15 6.4 9 4zM9 4v13.6M15 6.4v13.4"/></svg></button>
     </div>
     <div class="chips" id="chips"></div>
     <div class="two">
-      <div><label>Αρ. κλειδιού</label><input id="fKey" inputmode="numeric" placeholder="προαιρετικό"></div>
-      <div><label>Τηλέφωνο πελάτη</label><input id="fPhone" inputmode="tel" placeholder="προαιρετικό"></div>
+      <div><label>Αρ. κλειδιού</label><input id="fKey" inputmode="numeric" enterkeyhint="next" placeholder="προαιρετικό"></div>
+      <div><label>Τηλέφωνο πελάτη</label><input id="fPhone" inputmode="tel" enterkeyhint="done" placeholder="προαιρετικό"></div>
     </div>
     <label>Μάρκα και χρώμα</label>
-    <input id="fBrand" list="brands" placeholder="Μάρκα (π.χ. Toyota)" autocomplete="off" autocapitalize="words">
+    <input id="fBrand" list="brands" placeholder="Μάρκα (π.χ. Toyota)" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="done">
     <datalist id="brands"><option>Toyota<option>Volkswagen<option>Opel<option>Fiat<option>Peugeot<option>Citroën<option>Renault<option>Nissan<option>Hyundai<option>Kia<option>Ford<option>Mercedes-Benz<option>BMW<option>Audi<option>Skoda<option>Seat<option>Suzuki<option>Mazda<option>Honda<option>Mitsubishi<option>Dacia<option>Smart<option>Mini<option>Volvo<option>Jeep<option>Land Rover<option>Porsche<option>Tesla<option>Alfa Romeo<option>Lancia<option>Daihatsu<option>Subaru<option>Chevrolet<option>Lexus<option>Yamaha<option>Honda (μηχανή)<option>Piaggio<option>Vespa</datalist>
     <div class="bchips" id="bchips"></div>
     <div class="cols" id="cols"></div>
     <label>Σημείωση</label>
-    <input id="fNote" placeholder="προαιρετικό">
+    <input id="fNote" enterkeyhint="done" placeholder="προαιρετικό">
     <div class="actions">
       <button type="button" class="btn grow" id="fCancel">Άκυρο</button>
       <button type="submit" class="btn primary grow" id="fSave" value="save">Αποθήκευση</button>
@@ -559,6 +562,25 @@ $('#chips').addEventListener('click',e=>{ if(e.target.classList.contains('chip')
 $('#fLoc').addEventListener('input',()=>{ pickedMap = null; });
 $('#fPlate').addEventListener('input',()=>{ checkDup(); prefillFromHistory(); });
 $('#fCancel').onclick = ()=>dlg.close();
+// Πληκτρολόγιο: η φόρμα ακολουθεί το ορατό τμήμα της οθόνης, Enter πάει στο επόμενο πεδίο, τα κουμπιά επιλογής κλείνουν το πληκτρολόγιο
+(() => {
+  const vv = window.visualViewport;
+  const fit = () => {
+    if (!dlg.open) return;
+    const h = vv ? vv.height : innerHeight, top = vv ? vv.offsetTop : 0;
+    dlg.style.setProperty('--vvh', h + 'px');
+    dlg.style.top = (top + 8) + 'px'; dlg.style.bottom = 'auto'; dlg.style.margin = '0 auto';
+    const a = document.activeElement; if (a && dlg.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) setTimeout(() => a.scrollIntoView({ block:'center', behavior:'smooth' }), 60);
+  };
+  vv?.addEventListener('resize', fit); vv?.addEventListener('scroll', fit);
+  dlg.addEventListener('focusin', () => setTimeout(fit, 250));
+  dlg.addEventListener('close', () => { ['top','bottom','margin'].forEach(p => dlg.style.removeProperty(p)); dlg.style.removeProperty('--vvh'); });
+  $('#fPlate').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#fLoc').focus(); } });
+  $('#fLoc').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); e.target.blur(); } });
+  $('#fPhone').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); e.target.blur(); } });
+  $('#fKey').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#fPhone').focus(); } });
+  ['#chips', '#bchips', '#cols'].forEach(id => $(id).addEventListener('click', () => { const a = document.activeElement; if (a && a.matches?.('input')) a.blur(); }));
+})();
 
 $('#form').addEventListener('submit', async e=>{
   e.preventDefault();
