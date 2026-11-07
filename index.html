@@ -173,6 +173,9 @@
   header .stat b{padding:1px 8px;font-size:13px}
   .stat.tot{background:var(--bt-bg);border-color:var(--bt-bd);color:var(--bt-fg)}
   .stat{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 6px 6px 14px;font-size:14px;font-weight:600;color:var(--muted)}
+  .stat.z{cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .stat.z.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .stat.z.on b{background:#fff;color:#111}
   .stat b{background:var(--accent);color:#fff;border-radius:99px;min-width:26px;text-align:center;padding:2px 8px;font-size:14px}
   .ic{width:18px;height:18px;vertical-align:-4px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:6px}
   .cam .ic{margin:0;width:26px;height:26px;vertical-align:middle}
@@ -398,7 +401,7 @@ if (LIVE) {
 const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let mapsList = [];
-let openId = null, lastK = '', all = [], tab = 'active', editing = null, mapApi = null, pickedMap = null;   // pickedMap: ο χάρτης απ' όπου επιλέχθηκε η θέση
+let zoneF = '', openId = null, lastK = '', all = [], tab = 'active', editing = null, mapApi = null, pickedMap = null;   // pickedMap: ο χάρτης απ' όπου επιλέχθηκε η θέση
 
 const modeEl = $('#mode');
 modeEl.textContent = LIVE ? 'live' : 'demo';
@@ -489,11 +492,11 @@ function summary(active){
   const g = new Map();
   for (const v of active){
     const raw = (v.location || '').trim() || 'Χωρίς θέση', k = raw.toLowerCase();
-    const e = g.get(k) || { name: raw, n: 0 }; e.n++; g.set(k, e);
+    const e = g.get(k) || { name: raw, key: k, n: 0 }; e.n++; g.set(k, e);
   }
   const rows = [...g.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'el'));
   const MAX = 8, shown = rows.slice(0, MAX), rest = rows.slice(MAX).reduce((t, r) => t + r.n, 0);
-  return shown.map(r => `<div class="stat"><span>${esc(r.name)}</span><b>${r.n}</b></div>`).join('')
+  return shown.map(r => `<div class="stat z${zoneF===r.key?' on':''}" data-z="${esc(r.key)}"><span>${esc(r.name)}</span><b>${r.n}</b></div>`).join('')
     + (rows.length > MAX ? `<div class="stat"><span>+${rows.length - MAX} ακόμα σημεία</span><b>${rest}</b></div>` : '');
 }
 
@@ -502,6 +505,7 @@ function render(){
   const k = plateKey(raw);
   if (k !== lastK){ lastK = k; const one = k ? all.filter(v => !v.exitAt && (v.plateKey||plateKey(v.plate)).includes(k)) : []; openId = one.length===1 ? one[0].id : null; }   // ένα αποτέλεσμα → ανοίγει μόνο του
   const active = all.filter(v=>!v.exitAt);
+  if (zoneF && !active.some(v => ((v.location || '').trim() || 'Χωρίς θέση').toLowerCase() === zoneF)) zoneF = '';
   $('#count').textContent = `${active.length} μέσα`;
   $('#stats').innerHTML = CAN ? summary(active) : '';
   let html = '';
@@ -516,7 +520,8 @@ function render(){
       if (mOut.length) html += `<h3>Προηγούμενες φορές</h3>` + mOut.slice(0,30).map(carCard).join('');
     }
   } else if (tab === 'active') {
-    html = (active.length ? active.map(carCard).join('') : `<div class="empty">Δεν υπάρχουν οχήματα μέσα.<br>Πάτα «+ Νέο όχημα».</div>`);
+    const shownA = zoneF ? active.filter(v => ((v.location || '').trim() || 'Χωρίς θέση').toLowerCase() === zoneF) : active;
+    html = (active.length ? shownA.map(carCard).join('') : `<div class="empty">Δεν υπάρχουν οχήματα μέσα.<br>Πάτα «+ Νέο όχημα».</div>`);
   } else {
     const hist = all.filter(v=>v.exitAt);
     html = hist.length ? hist.slice(0,200).map(carCard).join('') : `<div class="empty">Δεν υπάρχει ιστορικό ακόμα.</div>`;
@@ -969,6 +974,7 @@ $('#q').addEventListener('search', ofmGo);                // το πλήκτρο
 $('#camF').onclick = ()=>openScan((p, col)=>{ $('#fPlate').value = p; if (col && !pickedColor){ sugColor = col; renderCols(); } checkDup(); prefillFromHistory(); $('#fLoc').focus(); });
 
 /* ---------- Γεγονότα ---------- */
+$('#stats').onclick = e => { const z = e.target.closest('.stat.z'); if (!z) return; zoneF = zoneF === z.dataset.z ? '' : z.dataset.z; tab = 'active'; $('#q').value = ''; render(); };
 $('#add').onclick = ()=>{ ensureStaff(); openForm(null, $('#q').value.trim()); };
 $('#list').addEventListener('click', async e=>{
   if (e.target.id==='addFromSearch'){ ensureStaff(); return openForm(null, $('#q').value.trim()); }
@@ -993,7 +999,7 @@ $('#list').addEventListener('click', async e=>{
 $('#q').addEventListener('input',render);
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   if (t.dataset.tab==='map') return mapApi.open({ mode:'browse' });
-  tab=t.dataset.tab; $('#q').value=''; render();
+  tab=t.dataset.tab; zoneF=''; $('#q').value=''; render();
 });
 $('#mapF').onclick = ()=>mapApi.open({ mode:'pick', onPick: (label, mapId)=>{ $('#fLoc').value = label; pickedMap = mapId || null; } });
 
