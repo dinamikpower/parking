@@ -268,7 +268,7 @@ if (LIVE) {
     },
     async add(v){ await fs.addDoc(col, { ...v, entryAt: fs.serverTimestamp(), exitAt:null }); },
     async update(id,p){ await fs.updateDoc(fs.doc(db,'vehicles',id), p); },
-    async exit(id){ await fs.updateDoc(fs.doc(db,'vehicles',id), { exitAt: fs.serverTimestamp() }); },
+    async exit(id){ await fs.updateDoc(fs.doc(db,'vehicles',id), { exitAt: fs.serverTimestamp(), exitBy: staff() }); },
     async remove(id){ await fs.deleteDoc(fs.doc(db,'vehicles',id)); },
     // Χάρτες: πολλοί χάρτες. Το «main» κρατά τα παλιά έγγραφα (maps/main, maps/spots, maps/shapes)
     // και οι υπόλοιποι maps/<id>, maps/<id>_spots, maps/<id>_shapes. Η λίστα είναι στο maps/index.
@@ -300,7 +300,7 @@ if (LIVE) {
     subscribe(cb){ subs.add(cb); cb(sorted()); window.addEventListener('storage',()=>cb(sorted())); return ()=>subs.delete(cb); },
     async add(v){ const a=load(); a.push({ ...v, id:crypto.randomUUID(), entryAt:Date.now(), exitAt:null }); save(a); },
     async update(id,p){ save(load().map(x=>x.id===id?{...x,...p}:x)); },
-    async exit(id){ save(load().map(x=>x.id===id?{...x,exitAt:Date.now()}:x)); },
+    async exit(id){ save(load().map(x=>x.id===id?{...x,exitAt:Date.now(),exitBy:staff()}:x)); },
     async remove(id){ save(load().filter(x=>x.id!==id)); },
     subscribeMaps(cb){
       const emit=()=>{ let l=null; try{l=JSON.parse(localStorage.getItem('parking-maps-index'))}catch{} cb(l || [{ id:'main', name:'Χάρτης 1' }]); };
@@ -403,7 +403,7 @@ function carCard(v){
       ${(v.brand||v.color)?`<span>🚗 ${esc([v.brand,v.color].filter(Boolean).join(' · '))}</span>`:''}
       ${CAN&&v.keyNo?`<span>🔑 ${esc(v.keyNo)}</span>`:''}${CAN?phone:''}
       ${v.note?`<span>📝 ${esc(v.note)}</span>`:''}
-      ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}
+      ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}${v.exitAt&&v.exitBy?`<span>🚪 Παρέδωσε: ${esc(v.exitBy)}</span>`:''}
     </div>
     ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map">🗺 Στον χάρτη</button>':''}${mapApi?.coords?.(v.location, v.mapId)?'<button class="btn grow nav" data-act="nav">🧭 Πλοήγηση</button>':''}${CAN?'<button class="btn grow" data-act="edit">Επεξεργασία</button>':''}<button class="btn go grow" data-act="exit">Έφυγε ✓</button>${CAN?'<button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button>':''}</div>`:
       CAN ? `<div class="actions"><button class="btn grow" data-act="again">Ξανά στο παρκινγκ</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>` : ''}
