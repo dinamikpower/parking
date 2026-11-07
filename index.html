@@ -497,8 +497,7 @@ function summary(active){
   }
   const rows = [...g.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'el'));
   const MAX = 8, shown = rows.slice(0, MAX), rest = rows.slice(MAX).reduce((t, r) => t + r.n, 0);
-  return `<div class="stat tot"><span>Σύνολο</span><b>${active.length}</b></div>`
-    + shown.map(r => `<div class="stat"><span>${esc(r.name)}</span><b>${r.n}</b></div>`).join('')
+  return shown.map(r => `<div class="stat"><span>${esc(r.name)}</span><b>${r.n}</b></div>`).join('')
     + (rows.length > MAX ? `<div class="stat"><span>+${rows.length - MAX} ακόμα σημεία</span><b>${rest}</b></div>` : '');
 }
 
