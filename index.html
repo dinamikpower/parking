@@ -130,6 +130,9 @@
   .cols{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px}
   .cdot{width:32px;height:32px;border-radius:50%;border:2px solid rgba(100,116,139,.45);background:var(--c);padding:0;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
   .cdot.on{outline:3px solid var(--accent);outline-offset:2px}
+  .cdot.sug{outline:2px dashed var(--accent);outline-offset:2px}
+  .bchips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .bchips .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   .cdot.sm{width:14px;height:14px;flex:none;cursor:default;border-width:1.5px;box-shadow:none}
   #chDlg .chb{padding:20px 18px 16px;display:flex;flex-direction:column;gap:10px;text-align:center}
   #chDlg .chp .plate{font-size:26px}
@@ -191,6 +194,7 @@
     <label>Μάρκα και χρώμα</label>
     <input id="fBrand" list="brands" placeholder="Μάρκα (π.χ. Toyota)" autocomplete="off" autocapitalize="words">
     <datalist id="brands"><option>Toyota<option>Volkswagen<option>Opel<option>Fiat<option>Peugeot<option>Citroën<option>Renault<option>Nissan<option>Hyundai<option>Kia<option>Ford<option>Mercedes-Benz<option>BMW<option>Audi<option>Skoda<option>Seat<option>Suzuki<option>Mazda<option>Honda<option>Mitsubishi<option>Dacia<option>Smart<option>Mini<option>Volvo<option>Jeep<option>Land Rover<option>Porsche<option>Tesla<option>Alfa Romeo<option>Lancia<option>Daihatsu<option>Subaru<option>Chevrolet<option>Lexus<option>Yamaha<option>Honda (μηχανή)<option>Piaggio<option>Vespa</datalist>
+    <div class="bchips" id="bchips"></div>
     <div class="cols" id="cols"></div>
     <label>Σημείωση</label>
     <input id="fNote" placeholder="προαιρετικό">
@@ -346,9 +350,28 @@ function fmtDur(a,b){
 /* ---------- Χρώματα οχημάτων ---------- */
 const COLORS = [['Λευκό','#f8fafc'],['Μαύρο','#111827'],['Γκρι','#6b7280'],['Ασημί','#cbd5e1'],['Μπλε','#2563eb'],['Κόκκινο','#dc2626'],['Πράσινο','#16a34a'],['Κίτρινο','#facc15'],['Πορτοκαλί','#f97316'],['Καφέ','#92400e'],['Μπεζ','#d6c3a1'],['Μπορντό','#7f1d1d']];
 const colHex = n => (COLORS.find(c => c[0]===n) || [])[1] || null;
-let pickedColor = '';
+let pickedColor = '', sugColor = '';
 function renderCols(){
-  $('#cols').innerHTML = COLORS.map(([n,h]) => `<button type="button" class="cdot${pickedColor===n?' on':''}" data-col="${n}" style="--c:${h}" title="${n}" aria-label="${n}"></button>`).join('');
+  $('#cols').innerHTML = COLORS.map(([n,h]) => `<button type="button" class="cdot${pickedColor===n?' on':''}${!pickedColor && sugColor===n?' sug':''}" data-col="${n}" style="--c:${h}" title="${n}${!pickedColor && sugColor===n?' (πρόταση κάμερας)':''}" aria-label="${n}"></button>`).join('');
+}
+const TOP_BRANDS = ['Toyota','Volkswagen','Opel','Fiat','Peugeot','Citroën','Renault','Nissan','Hyundai','Kia','Ford','Mercedes-Benz','BMW','Skoda'];
+function renderBrands(){
+  const cur = $('#fBrand').value.trim().toLowerCase();
+  $('#bchips').innerHTML = TOP_BRANDS.map(b => `<button type="button" class="chip${cur===b.toLowerCase()?' on':''}" data-b="${b}">${b}</button>`).join('');
+}
+$('#bchips').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (!b) return; $('#fBrand').value = $('#fBrand').value.trim().toLowerCase()===b.dataset.b.toLowerCase() ? '' : b.dataset.b; renderBrands(); });
+$('#fBrand').addEventListener('input', renderBrands);
+// Συμπλήρωση από προηγούμενη επίσκεψη της ίδιας πινακίδας (μόνο σε κενά πεδία)
+function prefillFromHistory(){
+  if (editing) return;
+  const k = plateKey($('#fPlate').value); if (!k || k.length < 5) return;
+  const prev = all.filter(v => (v.plateKey||plateKey(v.plate)) === k).sort((a,b)=>(b.entryAt||0)-(a.entryAt||0))[0];
+  if (!prev) return;
+  let ch = false;
+  if (prev.brand && !$('#fBrand').value.trim()){ $('#fBrand').value = prev.brand; ch = true; }
+  if (prev.color && !pickedColor){ pickedColor = prev.color; ch = true; }
+  if (prev.phone && !$('#fPhone').value.trim()){ $('#fPhone').value = prev.phone; ch = true; }
+  if (ch){ renderBrands(); renderCols(); toast('Συμπληρώθηκαν στοιχεία από προηγούμενη επίσκεψη'); }
 }
 $('#cols').addEventListener('click', e => { const b = e.target.closest('[data-col]'); if (!b) return; pickedColor = pickedColor===b.dataset.col ? '' : b.dataset.col; renderCols(); });
 
@@ -407,10 +430,10 @@ function openForm(v, prefillPlate){
   $('#fPlate').value = v?.plate || prefillPlate || '';
   $('#fLoc').value = v?.__again ? '' : (v?.location || '');
   pickedMap = v?.__again ? null : (v?.mapId || null);
-  $('#fBrand').value = v?.brand || ''; pickedColor = v?.color || ''; renderCols();
+  $('#fBrand').value = v?.brand || ''; pickedColor = v?.color || ''; sugColor = ''; renderCols(); renderBrands();
   $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = v?.phone || ''; $('#fNote').value = v?.note || '';
   if (v?.__again) editing = null;
-  checkDup(); renderChips(); dlg.showModal();
+  checkDup(); renderChips(); prefillFromHistory(); dlg.showModal();
   setTimeout(()=>($('#fPlate').value ? $('#fLoc') : $('#fPlate')).focus(), 50);
 }
 function checkDup(){
@@ -425,7 +448,7 @@ function renderChips(){
 }
 $('#chips').addEventListener('click',e=>{ if(e.target.classList.contains('chip')){ $('#fLoc').value = e.target.textContent; pickedMap = null; } });
 $('#fLoc').addEventListener('input',()=>{ pickedMap = null; });
-$('#fPlate').addEventListener('input',checkDup);
+$('#fPlate').addEventListener('input',()=>{ checkDup(); prefillFromHistory(); });
 $('#fCancel').onclick = ()=>dlg.close();
 
 $('#form').addEventListener('submit', async e=>{
@@ -826,7 +849,7 @@ function scanChoice(p, col){
     if (e.target === chDlg) return chDlg.close();
     const c = e.target.closest('[data-c]')?.dataset.c; if (!c) return;
     chDlg.close();
-    if (c === 'in'){ ensureStaff(); $('#q').value = ''; render(); openForm(null, p); if (col){ pickedColor = col; renderCols(); } }
+    if (c === 'in'){ ensureStaff(); $('#q').value = ''; render(); openForm(null, p); if (col && !pickedColor){ sugColor = col; renderCols(); } }
     if (c === 'out' && cur){ ensureStaff(); try { await store.exit(cur.id); toast('Καταγράφηκε έξοδος · ' + cur.plate); } catch (err) { toast('Σφάλμα: ' + err.message); } $('#q').value = ''; render(); }
     if (c === 'where'){ $('#q').value = p; render(); if (!openFoundOnMap()) openId = cur.id, render(); }
   };
@@ -838,7 +861,7 @@ let ofmT = 0;
 const ofmGo = () => { if (Date.now()-ofmT < 800) return; if (openFoundOnMap()) ofmT = Date.now(); };
 $('#q').addEventListener('keydown', e => { if (e.key==='Enter' || e.keyCode===13){ e.preventDefault(); ofmGo(); } });
 $('#q').addEventListener('search', ofmGo);                // το πλήκτρο «Αναζήτηση» του πληκτρολογίου κινητού
-$('#camF').onclick = ()=>openScan((p, col)=>{ $('#fPlate').value = p; if (col && !pickedColor){ pickedColor = col; renderCols(); } checkDup(); $('#fLoc').focus(); });
+$('#camF').onclick = ()=>openScan((p, col)=>{ $('#fPlate').value = p; if (col && !pickedColor){ sugColor = col; renderCols(); } checkDup(); prefillFromHistory(); $('#fLoc').focus(); });
 
 /* ---------- Γεγονότα ---------- */
 $('#add').onclick = ()=>{ ensureStaff(); openForm(null, $('#q').value.trim()); };
