@@ -1,0 +1,19 @@
+name: Deploy Firestore rules
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['firestore.rules']
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy rules
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PARKING_GAVRIIL_2026 }}
+        run: |
+          echo "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          sed -i "s/ADMIN_EMAIL/gata@gmail.com/" firestore.rules
+          npx --yes firebase-tools@latest deploy --only firestore:rules --project parking-gavriil-2026 --non-interactive
