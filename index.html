@@ -921,6 +921,8 @@ mapApi = initMap({
 });
 // Προφόρτωση του κώδικα του live χάρτη όταν η εφαρμογή είναι ανενεργή, ώστε το άνοιγμα να είναι άμεσο
 (window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => mapApi?.warm?.(), { timeout: 4000 });
+// Προφόρτωση της αναγνώρισης πινακίδας στο παρασκήνιο, ώστε η κάμερα να ανοίγει αμέσως (εκτός αν ο χρήστης έχει οικονομία δεδομένων)
+setTimeout(() => { if (!navigator.connection?.saveData) loadAlpr().catch(() => {}); }, 6000);
 store.subscribe(rows => { all = rows.map(r=>({...r, plateKey: r.plateKey || plateKey(r.plate)})); render(); mapApi.refresh(); });
 setInterval(render, 60000); // ανανέωση διάρκειας
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
