@@ -166,12 +166,16 @@
   .tabbar{position:sticky;top:var(--hh,150px);z-index:9;background:var(--bg);padding:12px 14px 8px}
   .tabbar .tabs{margin:0}
   html,body{overflow-x:clip;max-width:100%;overscroll-behavior-x:none}
+  .loc .lp{display:none}
+  .card.open .loc .lb{display:none}
+  .card.open .loc .lp{display:inline}
+  .loc .lb{color:var(--muted);font-weight:600}
   .sum{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
-  .sm{flex:1 1 84px;min-width:84px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;text-align:center;box-shadow:var(--shadow)}
-  .sm b{display:block;font-size:22px;font-weight:800;line-height:1.1}
-  .sm span{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-top:2px;white-space:nowrap}
-  .sm.tot{background:var(--accent);border-color:var(--accent)}
-  .sm.tot b,.sm.tot span{color:#fff}
+  .stat{flex:1 1 84px;min-width:84px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;text-align:center;box-shadow:var(--shadow)}
+  .stat b{display:block;font-size:22px;font-weight:800;line-height:1.1}
+  .stat span{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-top:2px;white-space:nowrap}
+  .stat.tot{background:var(--accent);border-color:var(--accent)}
+  .stat.tot b,.stat.tot span{color:#fff}
   .ic{width:18px;height:18px;vertical-align:-4px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:6px}
   .cam .ic{margin:0;width:26px;height:26px;vertical-align:middle}
   .tab{white-space:nowrap}
@@ -467,7 +471,7 @@ function carCard(v){
   const inside = !v.exitAt;
   const phone = v.phone ? `<a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>` : '';
   return `<div class="card${v.id===openId?' open':''}" data-id="${v.id}">
-    <div class="row"><span class="plate">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc">📍 ${esc(v.location)}</span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
+    <div class="row"><span class="plate">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc"><span class="lb">${esc(v.brand||'')}</span><span class="lp">📍 ${esc(v.location)}</span></span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
     <div class="more"><div>
     <div class="meta">
       <span>⏱ ${fmtT(v.entryAt)}${inside?` · ${fmtDur(v.entryAt,Date.now())}`:` → ${fmtT(v.exitAt)} · ${fmtDur(v.entryAt,v.exitAt)}`}</span>
@@ -488,9 +492,9 @@ function summary(active){
   const known = new Set(mapsList.map(m => m.id));
   const cnt = {}; let none = 0;
   for (const v of active){ if (v.mapId && known.has(v.mapId)) cnt[v.mapId] = (cnt[v.mapId]||0) + 1; else none++; }
-  const rows = mapsList.map(m => `<div class="sm"><b>${cnt[m.id]||0}</b><span>${esc(m.name)}</span></div>`);
-  if (none && mapsList.length) rows.push(`<div class="sm"><b>${none}</b><span>Χωρίς χάρτη</span></div>`);
-  return `<div class="sum"><div class="sm tot"><b>${active.length}</b><span>Σύνολο</span></div>${mapsList.length >= 2 ? rows.join('') : ''}</div>`;
+  const rows = mapsList.map(m => `<div class="stat"><b>${cnt[m.id]||0}</b><span>${esc(m.name)}</span></div>`);
+  if (none && mapsList.length) rows.push(`<div class="stat"><b>${none}</b><span>Χωρίς χάρτη</span></div>`);
+  return `<div class="sum"><div class="stat tot"><b>${active.length}</b><span>Σύνολο</span></div>${mapsList.length >= 2 ? rows.join('') : ''}</div>`;
 }
 
 function render(){
