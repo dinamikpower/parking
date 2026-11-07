@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0b1b3a">
+<meta name="theme-color" content="#0b0b0d">
+<script>document.documentElement.dataset.theme=localStorage.getItem('parking-theme')||'dark'</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Παρκινγκ">
@@ -16,10 +17,6 @@
     --bg:#f1f5f9; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
     --accent:#2563eb; --accent-d:#1d4ed8; --ok:#16a34a; --warn:#d97706; --danger:#dc2626;
     --bt-bg:#dbeafe; --bt-fg:#1d4ed8; --bt-bd:#93c5fd; --rd-bg:#fee2e2; --rd-fg:#b91c1c; --rd-bd:#fca5a5;
-  }
-  @media (prefers-color-scheme: dark){
-    :root{ --bg:#0b1220; --card:#131c2e; --text:#e6edf7; --muted:#8fa0b8; --line:#243049; --accent:#3b82f6; --accent-d:#2563eb;
-      --bt-bg:rgba(59,130,246,.22); --bt-fg:#bfdbfe; --bt-bd:rgba(96,165,250,.5); --rd-bg:rgba(239,68,68,.2); --rd-fg:#fecaca; --rd-bd:rgba(248,113,113,.5); }
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:90px}
@@ -146,50 +143,60 @@
   #chDlg .chbtn:disabled{opacity:.45}
   #chDlg .chx{background:transparent;border:0;color:var(--muted)}
   .toast{border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:11px 18px}
-  @media (prefers-color-scheme: dark){ .plate{background:#fff} .tag.in{color:#4ade80} .tag.out{color:#cbd5e1} }
 
-  /* ===== Φωτεινό και καθαρό ===== */
-  :root{ --bg:#f5f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e5eaf1; --accent:#2563eb; --accent-d:#1d4ed8;
+  /* ===== Θέματα: σκούρο (προεπιλογή) και φωτεινό — μινιμαλ ===== */
+  :root,html[data-theme=light]{ --bg:#f5f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e5eaf1; --accent:#2563eb; --accent-d:#1d4ed8;
+    --surf:#fff; --field:#f1f5f9; --field-f:#fff; --seg:#e9eef5; --seg-on:#fff; --seg-fg:#1d4ed8; --badge:#eef2f7; --badge-fg:#475569; --edge:#cbd5e1;
+    --in-bg:#e3f8ea; --in-fg:#15803d; --out-bg:#eef2f7; --out-fg:#475569; --strip:#0f172a; --chip:#fff; --inp:#f8fafc;
     --bt-bg:#eaf1ff; --bt-fg:#1d4ed8; --bt-bd:#c9dbff; --rd-bg:#fff0f0; --rd-fg:#b91c1c; --rd-bd:#fbcaca;
-    --shadow:0 1px 2px rgba(15,23,42,.05),0 2px 8px rgba(15,23,42,.05); }
-  html{color-scheme:light}
-  body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:#0f172a;z-index:60}
-  header{background:#fff;color:var(--text);border-radius:0;padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;box-shadow:0 1px 0 var(--line),0 6px 18px rgba(15,23,42,.05)}
-  h1{color:#0f172a;font-size:19px}
+    --shadow:0 1px 2px rgba(15,23,42,.05),0 2px 8px rgba(15,23,42,.05); --open-shadow:0 6px 20px rgba(15,23,42,.1); color-scheme:light }
+  html[data-theme=dark]{ --bg:#0b0b0d; --card:#131316; --text:#ececf0; --muted:#8a8a94; --line:#222227; --accent:#4c8dff; --accent-d:#3b7af0;
+    --surf:#0b0b0d; --field:#17171b; --field-f:#1c1c21; --seg:#141417; --seg-on:#26262c; --seg-fg:#fff; --badge:#1a1a1f; --badge-fg:#a1a1aa; --edge:#2e2e35;
+    --in-bg:rgba(74,222,128,.12); --in-fg:#4ade80; --out-bg:#1a1a1f; --out-fg:#a1a1aa; --strip:#000; --chip:#17171b; --inp:#17171b;
+    --bt-bg:#181c27; --bt-fg:#a9c1ff; --bt-bd:#2a3350; --rd-bg:#271416; --rd-fg:#fca5a5; --rd-bd:#4a2326;
+    --shadow:none; --open-shadow:0 8px 24px rgba(0,0,0,.5); color-scheme:dark }
+  body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--strip);z-index:60}
+  header{background:var(--surf);color:var(--text);border-radius:0;padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;box-shadow:0 1px 0 var(--line)}
+  h1{color:var(--text);font-size:19px}
   h1 small{color:var(--muted);font-weight:600}
-  .brand svg{box-shadow:0 2px 8px rgba(37,99,235,.3)}
-  .badge{background:#eef2f7;color:#475569;backdrop-filter:none}
-  .badge.live{background:#e3f8ea;color:#15803d}
-  .badge.demo{background:#fff3d6;color:#a16207}
-  #userBtn{background:#eef2f7;color:#334155}
-  #q{background:#f1f5f9;border:1.5px solid var(--line);box-shadow:none;color:#0f172a;border-radius:14px}
-  #q:focus{background:#fff;border-color:var(--accent);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
-  .cam{background:var(--accent);box-shadow:0 2px 8px rgba(37,99,235,.3)}
-  .tabs{background:#e9eef5;border:0;box-shadow:none;padding:4px}
-  .tab{color:#64748b}
-  .tab.on{background:#fff;color:var(--accent-d);box-shadow:0 1px 3px rgba(15,23,42,.14)}
-  .card{border:1px solid var(--line);border-left:4px solid #cbd5e1;box-shadow:var(--shadow)}
-  .card.open{border-color:var(--line);border-left-color:var(--accent);box-shadow:0 6px 20px rgba(15,23,42,.1)}
-  .plate{background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.15)}
+  .brand svg{box-shadow:none}
+  .badge{background:var(--badge);color:var(--badge-fg);backdrop-filter:none}
+  .badge.live{background:var(--in-bg);color:var(--in-fg)}
+  .badge.demo{background:rgba(234,179,8,.16);color:#ca8a04}
+  .badge{white-space:nowrap}
+  h1 small{white-space:nowrap;font-size:10px;letter-spacing:.4px}
+  #themeBtn{border:0;font:inherit;font-size:14px;line-height:1;padding:5px 9px;cursor:pointer}
+  #userBtn{background:var(--badge);color:var(--badge-fg)}
+  #q{background:var(--field);border:1.5px solid var(--line);box-shadow:none;color:var(--text);border-radius:14px}
+  #q::placeholder{color:var(--muted)}
+  #q:focus{background:var(--field-f);border-color:var(--accent);box-shadow:none}
+  .cam{background:var(--accent);box-shadow:none}
+  .tabs{background:var(--seg);border:0;box-shadow:none;padding:4px}
+  .tab{color:var(--muted)}
+  .tab.on{background:var(--seg-on);color:var(--seg-fg);box-shadow:none}
+  .card{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--edge);box-shadow:var(--shadow)}
+  .card:has(.tag.in){border-left-color:var(--in-fg)}
+  .card.open{border-color:var(--line);border-left-color:var(--accent);box-shadow:var(--open-shadow)}
+  .card:has(.tag.in).open{border-left-color:var(--in-fg)}
+  .plate{background:#f4f4f5;border-color:#0f172a;color:#0f172a;box-shadow:none}
   .btn.primary,.fab{background:var(--accent);border-color:var(--accent);color:#fff}
-  .fab{box-shadow:0 6px 18px rgba(37,99,235,.35)}
+  .fab{box-shadow:0 6px 18px rgba(0,0,0,.35)}
   .btn.go{background:#16a34a;border-color:#16a34a;color:#fff}
   .btn.nav{background:#0ea5e9;border-color:#0ea5e9;color:#fff}
-  dialog{border-radius:18px;box-shadow:0 20px 50px rgba(15,23,42,.25)}
-  dialog::backdrop{background:rgba(15,23,42,.4)}
-  input,textarea,select{background:#f8fafc;color:var(--text);border-color:var(--line)}
-  .cdot{border-color:#cbd5e1;box-shadow:none}
-  .chip{background:#fff;border-color:var(--line);color:#334155}
-  .chip:active{background:var(--bt-bg)}
+  dialog{background:var(--card);color:var(--text);border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  dialog::backdrop{background:rgba(0,0,0,.55)}
+  input,textarea,select{background:var(--inp);color:var(--text);border-color:var(--line)}
+  .cdot{border-color:var(--edge);box-shadow:none}
+  .chip{background:var(--chip);border-color:var(--line);color:var(--text)}
   .bchips .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .tag.in{background:#e3f8ea;color:#15803d}
-  .tag.out{background:#eef2f7;color:#475569}
+  .tag.in{background:var(--in-bg);color:var(--in-fg)}
+  .tag.out{background:var(--out-bg);color:var(--out-fg)}
   .card.open>.row{flex-wrap:wrap;row-gap:6px}
   .card.open>.row .tag{display:none}
   .card.open .chev{margin-left:auto}
   .card.open .loc{flex:1 1 90px}
-  input.pl{border:1.5px solid var(--line);background:#f8fafc}
-  input.pl:focus{border-color:var(--accent);background:#fff;outline:0;box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+  input.pl{border:1.5px solid var(--line);background:var(--inp)}
+  input.pl:focus{border-color:var(--accent);background:var(--field-f);outline:0}
 </style>
 </head>
 <body>
@@ -199,6 +206,7 @@
     <div class="brand"><svg viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e3a8a"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bg)"/><path d="M256 450c-70-58-126-128-126-206 0-66 56-122 126-122s126 56 126 122c0 78-56 148-126 206z" fill="#fff"/><text x="256" y="262" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="190" fill="#1d4ed8">P</text></svg>
       <h1>Παρκινγκ<small>Εντοπισμός οχημάτων</small></h1></div>
     <span style="display:flex;gap:6px;align-items:center">
+      <button id="themeBtn" class="badge" type="button" aria-label="Αλλαγή θέματος" title="Σκούρο / Φωτεινό"></button>
       <span id="count" class="badge">0 μέσα</span>
       <span id="mode" class="badge demo" title="">demo</span>
     </span>
@@ -383,6 +391,10 @@ modeEl.className = 'badge ' + (LIVE ? 'live' : 'demo');
 modeEl.title = LIVE ? 'Συγχρονισμός σε πραγματικό χρόνο' : 'Τοπική λειτουργία – τα δεδομένα δεν μοιράζονται';
 
 const CAN = !ME || ME.head;   // false = υπάλληλος: μόνο προβολή
+// Θέμα: σκούρο (προεπιλογή) ή φωτεινό
+const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').textContent = t === 'dark' ? '☀️' : '🌙'; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#0b0b0d' : '#ffffff'); };
+applyTheme(document.documentElement.dataset.theme || 'dark');
+$('#themeBtn').onclick = () => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('parking-theme', t); } catch {} applyTheme(t); };
 document.body.classList.toggle('ro', !CAN);
 const staff = () => ME ? ME.name : (localStorage.getItem('parking-staff') || '');
 function ensureStaff(){
