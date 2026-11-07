@@ -170,7 +170,11 @@
   .card.open .loc .lb{display:none}
   .card.open .loc .lp{display:inline}
   .loc .lb{color:var(--muted);font-weight:600}
-  .sum{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+  .sum{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
+  .sum:empty{display:none}
+  header .stat{padding:4px 4px 4px 12px;font-size:13px}
+  header .stat b{padding:1px 8px;font-size:13px}
+  .stat.tot{background:var(--bt-bg);border-color:var(--bt-bd);color:var(--bt-fg)}
   .stat{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 6px 6px 14px;font-size:14px;font-weight:600;color:var(--muted)}
   .stat b{background:var(--accent);color:#fff;border-radius:99px;min-width:26px;text-align:center;padding:2px 8px;font-size:14px}
   .ic{width:18px;height:18px;vertical-align:-4px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:6px}
@@ -228,6 +232,7 @@
     <input id="q" type="search" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="Πινακίδα…">
     <button class="cam" id="camQ" type="button" aria-label="Σάρωση πινακίδας">📷</button>
   </div>
+  <div id="stats" class="sum"></div>
 </header>
 
 <div class="tabbar"><div class="tabs">
@@ -485,13 +490,13 @@ function carCard(v){
 
 // Σύνοψη για τον επικεφαλής: πόσα οχήματα υπάρχουν σε κάθε παρκινγκ (χάρτη) και συνολικά
 function summary(active){
-  if (!active.length) return '';
   const known = new Set(mapsList.map(m => m.id));
   const cnt = {}; let none = 0;
   for (const v of active){ if (v.mapId && known.has(v.mapId)) cnt[v.mapId] = (cnt[v.mapId]||0) + 1; else none++; }
-  const rows = mapsList.map(m => `<div class="stat"><span>${esc(m.name)}</span><b>${cnt[m.id]||0}</b></div>`);
-  if (none && mapsList.length) rows.push(`<div class="stat"><span>Χωρίς χάρτη</span><b>${none}</b></div>`);
-  return mapsList.length >= 2 ? `<div class="sum">${rows.join('')}</div>` : '';
+  const multi = mapsList.length >= 2;
+  const rows = multi ? mapsList.map(m => `<div class="stat"><span>${esc(m.name)}</span><b>${cnt[m.id]||0}</b></div>`) : [];
+  if (multi && none) rows.push(`<div class="stat"><span>Χωρίς χάρτη</span><b>${none}</b></div>`);
+  return `<div class="stat tot"><span>Σύνολο</span><b>${active.length}</b></div>` + rows.join('');
 }
 
 function render(){
@@ -500,6 +505,7 @@ function render(){
   if (k !== lastK){ lastK = k; const one = k ? all.filter(v => !v.exitAt && (v.plateKey||plateKey(v.plate)).includes(k)) : []; openId = one.length===1 ? one[0].id : null; }   // ένα αποτέλεσμα → ανοίγει μόνο του
   const active = all.filter(v=>!v.exitAt);
   $('#count').textContent = `${active.length} μέσα`;
+  $('#stats').innerHTML = CAN ? summary(active) : '';
   let html = '';
 
   if (k) {
@@ -512,7 +518,7 @@ function render(){
       if (mOut.length) html += `<h3>Προηγούμενες φορές</h3>` + mOut.slice(0,30).map(carCard).join('');
     }
   } else if (tab === 'active') {
-    html = (CAN ? summary(active) : '') + (active.length ? active.map(carCard).join('') : `<div class="empty">Δεν υπάρχουν οχήματα μέσα.<br>Πάτα «+ Νέο όχημα».</div>`);
+    html = (active.length ? active.map(carCard).join('') : `<div class="empty">Δεν υπάρχουν οχήματα μέσα.<br>Πάτα «+ Νέο όχημα».</div>`);
   } else {
     const hist = all.filter(v=>v.exitAt);
     html = hist.length ? hist.slice(0,200).map(carCard).join('') : `<div class="empty">Δεν υπάρχει ιστορικό ακόμα.</div>`;
