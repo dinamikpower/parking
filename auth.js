@@ -32,7 +32,7 @@ const CSS = `
 #ud .st b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} #ud .st small{color:#64748b;display:block;font-weight:400;overflow:hidden;text-overflow:ellipsis}
 #ud button{font:inherit;cursor:pointer;padding:9px 12px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:inherit;font-weight:600}
 #ud button.p{background:#2563eb;border-color:#2563eb;color:#fff} #ud button.d{color:#b91c1c}
-#ud input{width:100%;box-sizing:border-box;padding:11px;border-radius:10px;border:1px solid #cbd5e1;font:inherit;font-size:16px;margin-top:6px}
+#ud input,#ud select{width:100%;box-sizing:border-box;padding:11px;border-radius:10px;border:1px solid #cbd5e1;font:inherit;font-size:16px;margin-top:6px}
 #ud .row{display:flex;gap:8px;margin-top:12px} #ud .row>*{flex:1} #ud .m{min-height:20px;font-size:14px;margin-top:8px}
 #userBtn{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:99px;padding:4px 10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 `;
@@ -98,7 +98,8 @@ export async function requireLogin(app, db, fs, CFG, onReady){
   }
 
   const user = auth.currentUser;
-  const me = { uid: user.uid, email: user.email, name: profile.name || (user.email || '').split('@')[0], admin: !!profile.admin };
+  const me = { uid: user.uid, email: user.email, name: profile.name || (user.email || '').split('@')[0], admin: !!profile.admin, role: profile.role || (profile.admin ? 'head' : 'staff') };
+  me.head = me.admin || me.role === 'head';   // επικεφαλής: μόνος που καταχωρεί/αλλάζει οχήματα
 
   /* ----- κουμπί χρήστη + παράθυρο προσωπικού ----- */
   const ud = document.createElement('dialog'); ud.id = 'ud'; document.body.append(ud);
@@ -107,10 +108,11 @@ export async function requireLogin(app, db, fs, CFG, onReady){
   btn.onclick = () => { renderUd(); ud.showModal(); };
 
   function renderUd(list){
-    ud.innerHTML = `<div class="in"><h2>👤 ${esc(me.name)}</h2><div class="sub">${esc(me.email)}${me.admin ? ' · διαχειριστής' : ''}</div>
+    ud.innerHTML = `<div class="in"><h2>👤 ${esc(me.name)}</h2><div class="sub">${esc(me.email)}${me.admin ? ' · διαχειριστής' : me.head ? ' · επικεφαλής' : ' · υπάλληλος'}</div>
       ${me.admin ? `<div id="stl"><div class="sub">Φόρτωση προσωπικού…</div></div>
-        <form id="stf"><b>Νέος υπάλληλος</b><input name="name" placeholder="Όνομα" required><input name="email" type="email" placeholder="Email" autocapitalize="off" required>
+        <form id="stf"><b>Νέο μέλος προσωπικού</b><input name="name" placeholder="Όνομα" required><input name="email" type="email" placeholder="Email" autocapitalize="off" required>
         <input name="pw" type="text" placeholder="Προσωρινός κωδικός (min 6)" minlength="6" required autocapitalize="off" autocomplete="off">
+        <select name="role"><option value="staff">Υπάλληλος (μόνο προβολή)</option><option value="head">Επικεφαλής (καταχωρεί οχήματα)</option></select>
         <div class="row"><button class="p" type="submit">+ Προσθήκη</button></div><div class="m"></div></form>` : ''}
       <div class="row"><button data-a="pw">Αλλαγή κωδικού (email)</button><button data-a="out" class="d">Αποσύνδεση</button></div><div class="row"><button data-a="x">Κλείσιμο</button></div><div class="m" id="um"></div></div>`;
     ud.querySelector('[data-a=x]').onclick = () => ud.close();
@@ -125,8 +127,9 @@ export async function requireLogin(app, db, fs, CFG, onReady){
     const draw = async () => {
       const snap = await fs.getDocs(fs.collection(db, 'staff'));
       const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.admin ? 1 : 0) - (a.admin ? 1 : 0) || String(a.name).localeCompare(String(b.name), 'el'));
-      box.innerHTML = `<div class="sub">Προσωπικό (${rows.length})</div>` + rows.map(r => `<div class="st"><b>${esc(r.name)}${r.admin ? ' ★' : ''}<small>${esc(r.email)}</small></b>
-        ${r.id === me.uid ? '' : `<button class="d" data-rm="${r.id}" data-n="${esc(r.name)}">Αφαίρεση</button>`}</div>`).join('');
+      box.innerHTML = `<div class="sub">Προσωπικό (${rows.length})</div>` + rows.map(r => { const head = r.admin || r.role === 'head'; return `<div class="st"><b>${esc(r.name)}${r.admin ? ' ★' : ''}<small>${esc(r.email)} · ${r.admin ? 'διαχειριστής' : head ? 'επικεφαλής' : 'υπάλληλος'}</small></b>
+        ${r.id === me.uid || r.admin ? '' : `<button data-role="${r.id}" data-to="${head ? 'staff' : 'head'}">${head ? 'Κάν’ τον υπάλληλο' : 'Κάν’ τον επικεφαλής'}</button><button class="d" data-rm="${r.id}" data-n="${esc(r.name)}">Αφαίρεση</button>`}</div>`; }).join('');
+      box.querySelectorAll('[data-role]').forEach(b => b.onclick = async () => { try { await fs.updateDoc(staffRef(b.dataset.role), { role: b.dataset.to }); await draw(); } catch (e) { fm.textContent = msg(e); } });
       box.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
         if (!confirm(`Να αφαιρεθεί η πρόσβαση του ${b.dataset.n};`)) return;
         try { await fs.deleteDoc(staffRef(b.dataset.rm)); await draw(); } catch (e) { fm.textContent = msg(e); }
@@ -142,7 +145,7 @@ export async function requireLogin(app, db, fs, CFG, onReady){
         let cred;
         try { cred = await A.createUserWithEmailAndPassword(sa, email, pw); }
         catch (x) { if (x.code === 'auth/email-already-in-use') cred = await A.signInWithEmailAndPassword(sa, email, pw); else throw x; }   // ήδη υπάρχων λογαριασμός: ξανά πρόσβαση αν ο κωδικός ταιριάζει
-        await fs.setDoc(staffRef(cred.user.uid), { name, email, admin: false, createdAt: Date.now(), by: me.email });
+        await fs.setDoc(staffRef(cred.user.uid), { name, email, admin: false, role: form.role.value === 'head' ? 'head' : 'staff', createdAt: Date.now(), by: me.email });
         await A.signOut(sa);
         form.reset(); fm.style.color = '#166534'; fm.textContent = `✓ Προστέθηκε ο/η ${name}. Δώσ' του το email και τον προσωρινό κωδικό.`; await draw();
       } catch (x) { fm.style.color = '#b91c1c'; fm.textContent = x.code === 'auth/invalid-credential' ? 'Υπάρχει ήδη λογαριασμός με αυτό το email και ο κωδικός δεν ταιριάζει.' : msg(x); }

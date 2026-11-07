@@ -350,6 +350,7 @@ export function nextLabel(l){
 
 export function initMap(ctx){
   const { store, getCars, plateKey, esc, fmtT, fmtDur, toast, openNewCarAt, exitCar, onChange } = ctx;
+  const CAN = () => ctx.canEdit ? !!ctx.canEdit() : true;   // false = υπάλληλος (μόνο προβολή)
   const st = document.createElement('style'); st.textContent = CSS; document.head.append(st);
 
   const dlg = document.createElement('dialog'); dlg.id = 'mapDlg';
@@ -720,20 +721,21 @@ export function initMap(ctx){
     const cars = occupancy().get(key(sp.l)) || [];
     if (!cars.length){
       sheet.innerHTML = `<b style="font-size:18px">Θέση ${esc(sp.l)}</b> <span class="m">· ελεύθερη</span>
-        <div class="mp-row"><button class="btn primary" data-a="newhere">+ Νέο όχημα εδώ</button><button class="btn" data-a="closesheet">Κλείσιμο</button></div>${spEdit()}`;
+        <div class="mp-row">${CAN()?'<button class="btn primary" data-a="newhere">+ Νέο όχημα εδώ</button>':''}<button class="btn" data-a="closesheet">Κλείσιμο</button></div>${spEdit()}`;
       return;
     }
     sheet.innerHTML = cars.map(v => `<div style="margin-bottom:10px"><span class="plate">${esc(v.plate)}</span>
       <div class="m">📍 ${esc(v.location)} · ⏱ ${fmtT(v.entryAt)} (${fmtDur(v.entryAt,Date.now())})${v.keyNo?` · 🔑 ${esc(v.keyNo)}`:''}${v.phone?` · <a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>`:''}</div>
-      <div class="mp-row"><button class="btn go" data-a="exit" data-id="${v.id}">Έφυγε ✓</button>${mode==='pick'?`<button class="btn" data-a="usepick">Χρήση της θέσης παρ' όλα αυτά</button>`:''}<button class="btn" data-a="closesheet">Κλείσιμο</button></div></div>`).join('') + spEdit();
+      <div class="mp-row">${CAN()?`<button class="btn go" data-a="exit" data-id="${v.id}">Έφυγε ✓</button>`:''}${mode==='pick'?`<button class="btn" data-a="usepick">Χρήση της θέσης παρ' όλα αυτά</button>`:''}<button class="btn" data-a="closesheet">Κλείσιμο</button></div></div>`).join('') + spEdit();
   }
 
   dlg.addEventListener('click', async e => {
     const b = e.target.closest('[data-a]'); if (!b) return;
     const a = b.dataset.a;
+    if (!CAN() && ['newhere','exit','newmap','renamemap','clearmap','newzone','img','pickimg','geoimg','cropimg','rename','del','movespot','done','undo','cx'].includes(a)) return;
     if (a==='close') return close();
     if (a==='closesheet') return closeSheet();
-    if (a==='edit'){ editing = true; mode = 'browse'; closeSheet(); renderAll(); return; }
+    if (a==='edit'){ if (!CAN()) return; editing = true; mode = 'browse'; closeSheet(); renderAll(); return; }
     if (a==='done'){
       startLabel = null; undo = []; clearTimeout(saveT);
       const final = JSON.parse(JSON.stringify({ list:doc.list, size:doc.size, lsize:doc.lsize, shapes:doc.shapes }));
@@ -825,7 +827,7 @@ export function initMap(ctx){
       if (!confirm('Να διαγραφεί ο χάρτης «'+m.name+'» (φωτογραφία, θέσεις και σχέδια);\nΔεν αναιρείται και φεύγει για όλους τους υπαλλήλους.\nΤα οχήματα δεν επηρεάζονται.')) return;
       clearTimeout(saveT); const id = m.id;
       try { await store.deleteMapData(id); maps = maps.filter(x => x.id!==id); await store.setMaps(maps); } catch(err){ return toast('Σφάλμα διαγραφής: '+err.message); }
-      editing = mode==='browse'; startLabel = null; undo = []; useMap(maps[0]?.id || null); afterLoad = fitView;
+      editing = mode==='browse' && CAN(); startLabel = null; undo = []; useMap(maps[0]?.id || null); afterLoad = fitView;
       closeSheet(); renderAll(); onChange?.(); toast('Ο χάρτης διαγράφηκε'); return;
     }
     if (a==='zone'){ zoneFilter = b.dataset.z || null; fitZone(); render(); return; }
@@ -926,7 +928,7 @@ export function initMap(ctx){
     let used = 0; for (const p of doc.list) if (occ.has(key(p.l))) used++;
     titleEl.innerHTML = `${esc(curMap()?.name || 'Χάρτης παρκινγκ')}<small>${total ? `${total-used} ελεύθερες από ${total}` : 'δεν έχουν οριστεί θέσεις'}</small>`;
     mapsEl.hidden = false;
-    mapsEl.innerHTML = maps.map(m => `<button class="mp-m ${m.id===curId?'on':''}" data-a="selmap" data-id="${esc(m.id)}">${esc(m.name)}</button>`).join('') + (mode==='pick' ? '' : '<button class="mp-m add" data-a="newmap" data-t="live">＋ Live χάρτης</button><button class="mp-m add" data-a="newmap" data-t="img">＋ Εικόνα</button>');
+    mapsEl.innerHTML = maps.map(m => `<button class="mp-m ${m.id===curId?'on':''}" data-a="selmap" data-id="${esc(m.id)}">${esc(m.name)}</button>`).join('') + (mode==='pick' || !CAN() ? '' : '<button class="mp-m add" data-a="newmap" data-t="live">＋ Live χάρτης</button><button class="mp-m add" data-a="newmap" data-t="img">＋ Εικόνα</button>');
     const zs = [...new Set(doc.list.map(p=>zoneOf(p.l)))].sort();
     zonesEl.innerHTML = zs.length>1 ? [`<button class="mp-z ${!zoneFilter?'on':''}" data-a="zone" data-z="">Όλες</button>`, ...zs.map(z=>`<button class="mp-z ${zoneFilter===z?'on':''}" data-a="zone" data-z="${esc(z)}">${esc(z)}</button>`)].join('') : '';
     liveEl.hidden = !isLive(); if (!isLive()) live?.stop();
@@ -966,7 +968,7 @@ export function initMap(ctx){
     return curId;
   }
   function open(o = {}){
-    mode = o.mode || 'browse'; pickCb = o.onPick || null; editing = (o.mode||'browse')==='browse'; selected = null; zoneFilter = null; startLabel = null; undo = []; tool = 'pan'; pend = null; drawing = null;
+    mode = o.mode || 'browse'; pickCb = o.onPick || null; editing = (o.mode||'browse')==='browse' && CAN(); selected = null; zoneFilter = null; startLabel = null; undo = []; tool = 'pan'; pend = null; drawing = null;
     focusKey = o.focus ? key(o.focus) : null;
     const target = o.focus ? findMapFor(o.focus, o.mapId) : (o.mapId && maps.some(m => m.id===o.mapId) ? o.mapId : curId);
     const switched = target && target!==curId;
