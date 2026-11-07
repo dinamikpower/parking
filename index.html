@@ -355,12 +355,22 @@ function renderCols(){
   $('#cols').innerHTML = COLORS.map(([n,h]) => `<button type="button" class="cdot${pickedColor===n?' on':''}${!pickedColor && sugColor===n?' sug':''}" data-col="${n}" style="--c:${h}" title="${n}${!pickedColor && sugColor===n?' (πρόταση κάμερας)':''}" aria-label="${n}"></button>`).join('');
 }
 const TOP_BRANDS = ['Toyota','Volkswagen','Opel','Fiat','Peugeot','Citroën','Renault','Nissan','Hyundai','Kia','Ford','Mercedes-Benz','BMW','Skoda'];
+let brandOther = false;
 function renderBrands(){
-  const cur = $('#fBrand').value.trim().toLowerCase();
-  $('#bchips').innerHTML = TOP_BRANDS.map(b => `<button type="button" class="chip${cur===b.toLowerCase()?' on':''}" data-b="${b}">${b}</button>`).join('');
+  const v = $('#fBrand').value.trim(), low = v.toLowerCase();
+  const custom = v && !TOP_BRANDS.some(b => b.toLowerCase()===low);
+  const other = brandOther || custom;
+  $('#fBrand').style.display = other ? '' : 'none';
+  $('#bchips').innerHTML = TOP_BRANDS.map(b => `<button type="button" class="chip${low===b.toLowerCase()?' on':''}" data-b="${b}">${b}</button>`).join('')
+    + `<button type="button" class="chip${other?' on':''}" data-other="1">Άλλο…</button>`;
 }
-$('#bchips').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (!b) return; $('#fBrand').value = $('#fBrand').value.trim().toLowerCase()===b.dataset.b.toLowerCase() ? '' : b.dataset.b; renderBrands(); });
-$('#fBrand').addEventListener('input', renderBrands);
+$('#bchips').addEventListener('click', e => {
+  const o = e.target.closest('[data-other]');
+  if (o){ if (brandOther || ($('#fBrand').value.trim() && !TOP_BRANDS.some(b=>b.toLowerCase()===$('#fBrand').value.trim().toLowerCase()))){ brandOther = false; $('#fBrand').value = ''; renderBrands(); } else { brandOther = true; renderBrands(); $('#fBrand').focus(); } return; }
+  const b = e.target.closest('[data-b]'); if (!b) return;
+  brandOther = false;
+  $('#fBrand').value = $('#fBrand').value.trim().toLowerCase()===b.dataset.b.toLowerCase() ? '' : b.dataset.b; renderBrands();
+});
 // Συμπλήρωση από προηγούμενη επίσκεψη της ίδιας πινακίδας (μόνο σε κενά πεδία)
 function prefillFromHistory(){
   if (editing) return;
@@ -430,7 +440,7 @@ function openForm(v, prefillPlate){
   $('#fPlate').value = v?.plate || prefillPlate || '';
   $('#fLoc').value = v?.__again ? '' : (v?.location || '');
   pickedMap = v?.__again ? null : (v?.mapId || null);
-  $('#fBrand').value = v?.brand || ''; pickedColor = v?.color || ''; sugColor = ''; renderCols(); renderBrands();
+  $('#fBrand').value = v?.brand || ''; pickedColor = v?.color || ''; sugColor = ''; brandOther = false; renderCols(); renderBrands();
   $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = v?.phone || ''; $('#fNote').value = v?.note || '';
   if (v?.__again) editing = null;
   checkDup(); renderChips(); prefillFromHistory(); dlg.showModal();
