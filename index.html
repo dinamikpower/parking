@@ -113,7 +113,7 @@
   .tab.on{background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.45)}
   .card{border-radius:var(--r)}
   .plate{position:relative;padding-left:27px;border-radius:7px;border-width:2px;overflow:hidden;background:linear-gradient(#fff,#f1f5f9);box-shadow:0 1px 3px rgba(0,0,0,.2)}
-  .plate::before{content:"GR";position:absolute;left:0;top:0;bottom:0;width:19px;background:#1d4ed8;color:#fff;font-size:8px;font-weight:800;letter-spacing:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px}
+  .plate::before{content:attr(data-c);position:absolute;left:0;top:0;bottom:0;width:19px;background:#1d4ed8;color:#fff;font-size:8px;font-weight:800;letter-spacing:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px}
   .card.open .plate{padding-left:30px}
   .card.open .plate::before{width:21px;font-size:9px}
   .tag.in{background:rgba(22,163,74,.14);color:#15803d}
@@ -210,6 +210,9 @@
   #dlg{position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;width:min(520px,100vw);max-width:100vw;border-radius:22px 22px 0 0;max-height:calc(var(--vvh,100dvh) - 12px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 -10px 40px rgba(0,0,0,.5);animation:sheetUp .3s cubic-bezier(.2,.85,.25,1)}
   html.lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
   html.lock{overflow:hidden;overscroll-behavior:none}
+  .ctry{display:flex;align-items:center;gap:10px;margin:8px 0 0}
+  .ctry label{margin:0;flex:1}
+  .ctry select{width:auto;min-width:84px;padding:8px 10px;border-radius:10px}
   #dlg::backdrop{animation:fadeIn .25s ease}
   #dlg form::before{content:"";display:block;width:40px;height:4px;border-radius:4px;background:var(--edge);margin:-6px auto 12px}
   @keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
@@ -261,6 +264,7 @@
       <input class="pl" id="fPlate" required autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="ΥΚΑ1234">
       <button class="cam" id="camF" type="button" aria-label="Σάρωση πινακίδας"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3"/><path d="M8 8v7M12 8v7M16 8v7" stroke-width="2.2"/></svg></button>
     </div>
+    <div class="ctry"><label for="fCountry">Χώρα πινακίδας</label><select id="fCountry"><option value="">—</option><option>GR</option><option>AL</option><option>BG</option><option>RO</option><option>MK</option><option>RS</option><option>TR</option><option>CY</option><option>DE</option><option>IT</option><option>FR</option><option>NL</option><option>BE</option><option>AT</option><option>CH</option><option>GB</option><option>PL</option><option>CZ</option><option>UA</option><option>GE</option></select></div>
     <div id="fWarn"></div>
     <label>Θέση</label>
     <div class="plrow">
@@ -481,7 +485,7 @@ function carCard(v){
   const inside = !v.exitAt;
   const phone = v.phone ? `<a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>` : '';
   return `<div class="card${v.id===openId?' open':''}" data-id="${v.id}">
-    <div class="row"><span class="plate">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc"><span class="lb">${esc(v.brand||'')}</span><span class="lp">📍 ${esc(v.location)}</span></span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
+    <div class="row"><span class="plate" data-c="${ccOf(v)}">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc"><span class="lb">${esc(v.brand||'')}</span><span class="lp">📍 ${esc(v.location)}</span></span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
     <div class="more"><div>
     <div class="meta">
       <span>⏱ ${fmtT(v.entryAt)}${inside?` · ${fmtDur(v.entryAt,Date.now())}`:` → ${fmtT(v.exitAt)} · ${fmtDur(v.entryAt,v.exitAt)}`}</span>
@@ -551,6 +555,7 @@ function openForm(v, prefillPlate){
   $('#fBrand').value = v?.brand || ''; pickedColor = v?.color || ''; sugColor = ''; brandOther = false; renderCols(); renderBrands();
   $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = v?.phone || ''; $('#fNote').value = v?.note || '';
   if (v?.__again) editing = null;
+  $('#fCountry').value = v?.__again ? (v.country || '') : (v?.country || ''); if (!$('#fCountry').value) syncCountry();
   checkDup(); renderChips(); prefillFromHistory(); dlg.showModal();
   setTimeout(()=>($('#fPlate').value ? $('#fLoc') : $('#fPlate')).focus(), 50);
 }
@@ -566,7 +571,11 @@ function renderChips(){
 }
 $('#chips').addEventListener('click',e=>{ if(e.target.classList.contains('chip')){ $('#fLoc').value = e.target.textContent; pickedMap = null; } });
 $('#fLoc').addEventListener('input',()=>{ pickedMap = null; });
-$('#fPlate').addEventListener('input',()=>{ checkDup(); prefillFromHistory(); });
+function syncCountry(){
+  const p = $('#fPlate').value.toUpperCase().replace(/[^A-Z0-9]/g,''), sel = $('#fCountry');
+  if (GR_RE.test(p)) sel.value = 'GR'; else if (p.length >= 4 && sel.value === 'GR') sel.value = '';
+}
+$('#fPlate').addEventListener('input',()=>{ checkDup(); prefillFromHistory(); syncCountry(); });
 // Όταν είναι ανοιχτό παράθυρο, η σελίδα πίσω δεν κυλάει
 (() => {
   let n = 0, y = 0;
@@ -604,7 +613,7 @@ $('#fCancel').onclick = ()=>dlg.close();
 $('#form').addEventListener('submit', async e=>{
   e.preventDefault();
   const plate = $('#fPlate').value.trim().toUpperCase();
-  const data = { plate, plateKey: plateKey(plate), location: $('#fLoc').value.trim(),
+  const data = { plate, country: $('#fCountry').value, plateKey: plateKey(plate), location: $('#fLoc').value.trim(),
     brand: $('#fBrand').value.trim(), color: pickedColor, keyNo: $('#fKey').value.trim(), phone: $('#fPhone').value.trim(), note: $('#fNote').value.trim(), mapId: pickedMap || null };
   if (!data.plateKey || !data.location) return;
   try {
@@ -637,6 +646,9 @@ export function parsePlate(text){
   return best ? best.plate : null;
 }
 window.__parsePlate = parsePlate;
+const GR_RE = /^[ABEZHIKMNOPTYX]{3}\d{4}$/;
+const COUNTRIES = ['GR','AL','BG','RO','MK','RS','TR','CY','DE','IT','FR','NL','BE','AT','CH','GB','PL','CZ','UA','GE'];
+const ccOf = v => (v && v.country) || (GR_RE.test(String(v && v.plate || '').toUpperCase().replace(/[^A-Z0-9]/g,'')) ? 'GR' : '');
 
 // Ξένες πινακίδες: άγνωστη μορφή, οπότε δεχόμαστε 4-9 χαρακτήρες με τουλάχιστον ένα ψηφίο και ένα γράμμα.
 // Η ασφάλεια έρχεται από την επιβεβαίωση (ίδιο αποτέλεσμα 2 φορές) και από τον έλεγχο του χρήστη.
@@ -990,7 +1002,7 @@ function scanChoice(p, col){
   const k = plateKey(p), cur = all.find(v => !v.exitAt && (v.plateKey||plateKey(v.plate)) === k);
   const where = cur && mapApi?.hasSpot(cur.location, cur.mapId);
   if (!CAN){ $('#q').value = p; render(); if (!openFoundOnMap() && cur){ openId = cur.id; render(); } return; }   // υπάλληλος: μόνο «πού βρίσκεται»
-  chDlg.innerHTML = `<div class="chb"><div class="chp"><span class="plate">${esc(p)}</span></div>
+  chDlg.innerHTML = `<div class="chb"><div class="chp"><span class="plate" data-c="${ccOf({plate:p})}">${esc(p)}</span></div>
     <div class="chs">${cur ? `Μέσα στο παρκινγκ · 📍 ${esc(cur.location)}` : 'Δεν είναι μέσα αυτή τη στιγμή'}</div>
     <button class="btn ${cur ? '' : 'primary'} chbtn" data-c="in">⬇ Είσοδος <small>νέα καταχώρηση</small></button>
     <button class="btn ${cur ? 'go' : ''} chbtn" data-c="out" ${cur ? '' : 'disabled'}>⬆ Έξοδος <small>${cur ? 'το όχημα έφυγε' : 'δεν είναι μέσα'}</small></button>
@@ -1012,7 +1024,7 @@ let ofmT = 0;
 const ofmGo = () => { if (Date.now()-ofmT < 800) return; if (openFoundOnMap()) ofmT = Date.now(); };
 $('#q').addEventListener('keydown', e => { if (e.key==='Enter' || e.keyCode===13){ e.preventDefault(); ofmGo(); } });
 $('#q').addEventListener('search', ofmGo);                // το πλήκτρο «Αναζήτηση» του πληκτρολογίου κινητού
-$('#camF').onclick = ()=>openScan((p, col)=>{ $('#fPlate').value = p; if (col && !pickedColor){ sugColor = col; renderCols(); } checkDup(); prefillFromHistory(); $('#fLoc').focus(); });
+$('#camF').onclick = ()=>openScan((p, col)=>{ $('#fPlate').value = p; syncCountry(); if (col && !pickedColor){ sugColor = col; renderCols(); } checkDup(); prefillFromHistory(); $('#fLoc').focus(); });
 
 /* ---------- Γεγονότα ---------- */
 $('#stats').onclick = e => { const z = e.target.closest('.stat.z'); if (!z) return; zoneF = zoneF === z.dataset.z ? '' : z.dataset.z; tab = 'active'; $('#q').value = ''; render(); };
