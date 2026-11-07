@@ -490,13 +490,16 @@ function carCard(v){
 
 // Σύνοψη για τον επικεφαλής: πόσα οχήματα υπάρχουν σε κάθε παρκινγκ (χάρτη) και συνολικά
 function summary(active){
-  const known = new Set(mapsList.map(m => m.id));
-  const cnt = {}; let none = 0;
-  for (const v of active){ if (v.mapId && known.has(v.mapId)) cnt[v.mapId] = (cnt[v.mapId]||0) + 1; else none++; }
-  const multi = mapsList.length >= 2;
-  const rows = multi ? mapsList.map(m => `<div class="stat"><span>${esc(m.name)}</span><b>${cnt[m.id]||0}</b></div>`) : [];
-  if (multi && none) rows.push(`<div class="stat"><span>Χωρίς χάρτη</span><b>${none}</b></div>`);
-  return `<div class="stat tot"><span>Σύνολο</span><b>${active.length}</b></div>` + rows.join('');
+  const g = new Map();
+  for (const v of active){
+    const raw = (v.location || '').trim() || 'Χωρίς θέση', k = raw.toLowerCase();
+    const e = g.get(k) || { name: raw, n: 0 }; e.n++; g.set(k, e);
+  }
+  const rows = [...g.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'el'));
+  const MAX = 8, shown = rows.slice(0, MAX), rest = rows.slice(MAX).reduce((t, r) => t + r.n, 0);
+  return `<div class="stat tot"><span>Σύνολο</span><b>${active.length}</b></div>`
+    + shown.map(r => `<div class="stat"><span>${esc(r.name)}</span><b>${r.n}</b></div>`).join('')
+    + (rows.length > MAX ? `<div class="stat"><span>+${rows.length - MAX} ακόμα σημεία</span><b>${rest}</b></div>` : '');
 }
 
 function render(){
