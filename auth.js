@@ -34,7 +34,7 @@ const CSS = `
 #ud button.p{background:#2563eb;border-color:#888;color:#fff} #ud button.d{background:var(--rd-bg,#fee2e2);border-color:var(--rd-bd,#fca5a5);color:var(--rd-fg,#b91c1c)}
 #ud input,#ud select{width:100%;box-sizing:border-box;padding:11px;border-radius:10px;border:1px solid var(--line,#cbd5e1);background:var(--bg,#fff);color:var(--text,#0f172a);font:inherit;font-size:16px;margin-top:6px}
 #ud .row{display:flex;gap:8px;margin-top:12px} #ud .row>*{flex:1} #ud .m{min-height:20px;font-size:14px;margin-top:8px}
-#userBtn{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:99px;padding:4px 10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#userBtn{background:var(--badge,rgba(255,255,255,.16));color:var(--badge-fg,#fff);border:0;border-radius:99px;padding:4px 10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 `;
 
 export async function requireLogin(app, db, fs, CFG, onReady){
