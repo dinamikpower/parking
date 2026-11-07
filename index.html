@@ -588,6 +588,7 @@ $('#fCancel').onclick = ()=>dlg.close();
     if (!dlg.open) return;
     const kb = vv ? Math.max(0, innerHeight - vv.height - vv.offsetTop) : 0;
     dlg.style.setProperty('--kb', kb > 80 ? kb + 'px' : '0px');
+    dlg.style.transform = vv && vv.offsetTop > 0 ? `translateY(${vv.offsetTop}px)` : '';   // το iOS «σέρνει» την οθόνη προς τα πάνω· το αντισταθμίζουμε ώστε η φόρμα να μένει ακίνητη
     const a = document.activeElement;
     if (kb > 80 && a && dlg.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) {
       const r = a.getBoundingClientRect(), limit = (vv ? vv.height + vv.offsetTop : innerHeight) - 12;
@@ -596,7 +597,7 @@ $('#fCancel').onclick = ()=>dlg.close();
   };
   vv?.addEventListener('resize', fit); vv?.addEventListener('scroll', fit);
   dlg.addEventListener('focusin', () => setTimeout(fit, 250));
-  dlg.addEventListener('close', () => { ['bottom'].forEach(p => dlg.style.removeProperty(p)); dlg.style.removeProperty('--kb'); });
+  dlg.addEventListener('close', () => { ['bottom'].forEach(p => dlg.style.removeProperty(p)); dlg.style.removeProperty('--kb'); dlg.style.transform = ''; });
   $('#fPlate').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#fLoc').focus(); } });
   $('#fLoc').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); e.target.blur(); } });
   $('#fPhone').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); e.target.blur(); } });
