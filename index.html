@@ -181,7 +181,9 @@
   .tab{white-space:nowrap}
   .badge{white-space:nowrap}
   h1 small{white-space:nowrap;font-size:10px;letter-spacing:.4px}
-  #themeBtn{border:0;font:inherit;font-size:14px;line-height:1;padding:5px 9px;cursor:pointer}
+  #themeBtn{border:0;font:inherit;line-height:0;padding:6px 9px;cursor:pointer;display:inline-flex;align-items:center}
+  .badge.err{background:#b91c1c;color:#fff}
+  .badge[hidden]{display:none}
   #userBtn{background:var(--badge);color:var(--badge-fg)}
   #q{background:var(--field);border:1.5px solid var(--line);box-shadow:none;color:var(--text);border-radius:14px}
   #q::placeholder{font-size:16px;font-weight:600;letter-spacing:.3px;text-transform:none}
@@ -346,7 +348,7 @@ if (LIVE) {
   store = {
     subscribe(cb){
       const q = fs.query(col, fs.orderBy('entryAt','desc'), fs.limit(1500));
-      return fs.onSnapshot(q, snap => cb(snap.docs.map(d => ({ id:d.id, ...d.data(), entryAt:d.data().entryAt?.toMillis?.() ?? Date.now(), exitAt:d.data().exitAt?.toMillis?.() ?? null }))));
+      return fs.onSnapshot(q, snap => cb(snap.docs.map(d => ({ id:d.id, ...d.data(), entryAt:d.data().entryAt?.toMillis?.() ?? Date.now(), exitAt:d.data().exitAt?.toMillis?.() ?? null }))), err => window.__status?.('Σφάλμα σερβερ'));
     },
     async add(v){ await fs.addDoc(col, { ...v, entryAt: fs.serverTimestamp(), exitAt:null }); },
     async update(id,p){ await fs.updateDoc(fs.doc(db,'vehicles',id), p); },
@@ -418,13 +420,21 @@ let mapsList = [];
 let zoneF = '', openId = null, lastK = '', all = [], tab = 'active', editing = null, mapApi = null, pickedMap = null;   // pickedMap: ο χάρτης απ' όπου επιλέχθηκε η θέση
 
 const modeEl = $('#mode');
-modeEl.textContent = LIVE ? 'live' : 'demo';
-modeEl.className = 'badge ' + (LIVE ? 'live' : 'demo');
-modeEl.title = LIVE ? 'Συγχρονισμός σε πραγματικό χρόνο' : 'Τοπική λειτουργία – τα δεδομένα δεν μοιράζονται';
+// Σε live λειτουργία δεν δείχνουμε τίποτα· εμφανίζεται μήνυμα μόνο αν υπάρξει πρόβλημα σύνδεσης/σερβερ
+const setStatus = msg => { if (msg){ modeEl.textContent = msg; modeEl.className = 'badge err'; modeEl.hidden = false; } else if (LIVE){ modeEl.hidden = true; } };
+if (LIVE){ modeEl.hidden = true; }
+else { modeEl.textContent = 'demo'; modeEl.className = 'badge demo'; modeEl.title = 'Τοπική λειτουργία – τα δεδομένα δεν μοιράζονται'; }
+window.__status = setStatus;
+if (LIVE){
+  window.addEventListener('offline', () => setStatus('Χωρίς σύνδεση'));
+  window.addEventListener('online', () => setStatus(''));
+}
 
 const CAN = !ME || ME.head;   // false = υπάλληλος: μόνο προβολή
 // Θέμα: σκούρο (προεπιλογή) ή φωτεινό
-const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').textContent = t === 'dark' ? '☀️' : '🌙'; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#0d0d0d' : '#ffffff'); };
+const ICON_SUN = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>';
+const ICON_MOON = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/></svg>';
+const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').innerHTML = t === 'dark' ? ICON_SUN : ICON_MOON; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#0d0d0d' : '#ffffff'); };
 applyTheme(document.documentElement.dataset.theme || 'dark');
 // Η κεφαλίδα και οι καρτέλες μένουν σταθερές πάνω όταν γίνεται scroll
 const setHH = () => document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px');
@@ -1094,7 +1104,7 @@ mapApi = initMap({
 (window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => mapApi?.warm?.(), { timeout: 4000 });
 // Προφόρτωση της αναγνώρισης πινακίδας στο παρασκήνιο, ώστε η κάμερα να ανοίγει αμέσως (εκτός αν ο χρήστης έχει οικονομία δεδομένων)
 setTimeout(() => { if (!navigator.connection?.saveData) loadAlpr().catch(() => {}); }, 6000);
-store.subscribe(rows => { all = rows.map(r=>({...r, plateKey: r.plateKey || plateKey(r.plate)})); render(); mapApi.refresh(); });
+store.subscribe(rows => { window.__status?.(''); all = rows.map(r=>({...r, plateKey: r.plateKey || plateKey(r.plate)})); render(); mapApi.refresh(); });
 setInterval(render, 60000); // ανανέωση διάρκειας
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
