@@ -1063,7 +1063,7 @@ function scanChoice(p, col){
   const k = plateKey(p), cur = all.find(v => !v.exitAt && (v.plateKey||plateKey(v.plate)) === k);
   chDlg.innerHTML = `<div class="chb"><div class="chp"><span class="plate" data-c="${ccOf({plate:p})}">${esc(p)}</span></div>
     <div class="chs">${cur ? (cur.location ? `Μέσα στο παρκινγκ · 📍 ${esc(cur.location)}` : 'Αναμένει παρκάρισμα · χωρίς θέση') : 'Δεν είναι μέσα αυτή τη στιγμή'}</div>
-    ${cur && !cur.location ? `<button class="btn primary chbtn" data-c="park">📍 Παρκάρισμα <small>ορισμός θέσης</small></button>` : ''}
+    ${cur ? `<button class="btn ${cur.location ? '' : 'primary'} chbtn" data-c="park">📍 ${cur.location ? 'Αλλαγή θέσης' : 'Παρκάρισμα'} <small>${cur.location ? 'το μετακίνησα' : 'ορισμός θέσης'}</small></button>` : ''}
     <button class="btn ${cur ? '' : 'primary'} chbtn" data-c="in">⬇ Είσοδος <small>νέα καταχώρηση</small></button>
     <button class="btn ${cur ? 'go' : ''} chbtn" data-c="out" ${cur ? '' : 'disabled'}>⬆ Έξοδος <small>${cur ? 'το όχημα έφυγε' : 'δεν είναι μέσα'}</small></button>
     <button class="btn chx" data-c="x">Ακύρωση</button></div>`;
