@@ -184,6 +184,7 @@
   #themeBtn{border:0;font:inherit;font-size:14px;line-height:1;padding:5px 9px;cursor:pointer}
   #userBtn{background:var(--badge);color:var(--badge-fg)}
   #q{background:var(--field);border:1.5px solid var(--line);box-shadow:none;color:var(--text);border-radius:14px}
+  #q::placeholder{font-size:16px;font-weight:600;letter-spacing:.3px;text-transform:none}
   #q::placeholder{color:var(--muted)}
   #q:focus{background:var(--field-f);border-color:var(--accent);box-shadow:none}
   .cam{background:var(--accent);box-shadow:none}
@@ -241,7 +242,7 @@
     </span>
   </div>
   <div class="srch">
-    <input id="q" type="search" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="Αρ. Πινακίδας…">
+    <input id="q" type="search" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="Πινακίδα ή μάρκα…">
     <button class="cam" id="camQ" type="button" aria-label="Σάρωση πινακίδας"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3"/><path d="M8 8v7M12 8v7M16 8v7" stroke-width="2.2"/></svg></button>
   </div>
   <div id="stats" class="sum"></div>
