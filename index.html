@@ -485,7 +485,7 @@ function carCard(v){
   const inside = !v.exitAt;
   const phone = v.phone ? `<a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>` : '';
   return `<div class="card${v.id===openId?' open':''}" data-id="${v.id}">
-    <div class="row"><span class="plate" data-c="${ccOf(v)}">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc"><span class="lb">${esc(v.brand||'')}</span><span class="lp">📍 ${esc(v.location)}</span></span>${CAN&&inside&&!v.phone?'<span class="nophone" title="Χωρίς τηλέφωνο">📞?</span>':''}<span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
+    <div class="row"><span class="plate" data-c="${ccOf(v)}">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc"><span class="lb">${esc(v.brand||'')}</span><span class="lp">📍 ${esc(v.location)}</span></span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
     <div class="more"><div>
     <div class="meta">
       <span>⏱ ${fmtT(v.entryAt)}${inside?` · ${fmtDur(v.entryAt,Date.now())}`:` → ${fmtT(v.exitAt)} · ${fmtDur(v.entryAt,v.exitAt)}`}</span>
