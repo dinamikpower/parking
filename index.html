@@ -1085,8 +1085,8 @@ window.__scanChoice = scanChoice;
 const onScanned = (p, col)=>{
   const k = plateKey(p), cur = all.find(v => !v.exitAt && (v.plateKey||plateKey(v.plate)) === k);
   if (!cur){ ensureStaff(); $('#q').value = ''; render(); openForm(null, p); if (col && !pickedColor){ sugColor = col; renderCols(); } }   // νέο όχημα → καταχώρηση
-  else if (!cur.location){ $('#q').value = p; render(); parkOnMap(cur); }                                                            // περιμένει παρκάρισμα → χάρτης
-  else { $('#q').value = p; render(); openId = cur.id; render(); }                                                                  // ήδη παρκαρισμένο → ανοίγει η κάρτα (θέση, Έφυγε)
+  else if (!cur.location){ $('#q').value = ''; render(); parkOnMap(cur); }                                                            // περιμένει παρκάρισμα → χάρτης
+  else { $('#q').value = ''; tab = 'active'; zoneF = ''; lastK = ''; openId = cur.id; render(); setTimeout(() => document.querySelector(`.card[data-id="${cur.id}"]`)?.scrollIntoView({ block:'center', behavior:'smooth' }), 60); }                                                                  // ήδη παρκαρισμένο → ανοίγει η κάρτα (θέση, Έφυγε)
 };
 window.__onScanned = onScanned;
 $('#camQ').onclick = ()=>openScan(onScanned);
