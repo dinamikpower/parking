@@ -15,8 +15,8 @@ service cloud.firestore {
       allow write: if isHead();
       // οι υπάλληλοι μπορούν να καταχωρούν νέα οχήματα και να δηλώνουν έξοδο
       allow create: if isStaff();
-      // (έξοδος) αλλάζουν μόνο exitAt/exitBy (αλλάζουν μόνο exitAt/exitBy)
-      allow update: if isStaff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['exitAt', 'exitBy']);
+      // (έξοδος / παρκάρισμα) αλλάζουν μόνο exitAt/exitBy ή θέση (location/mapId/parkedBy/parkedAt)
+      allow update: if isStaff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['exitAt', 'exitBy', 'location', 'mapId', 'parkedBy', 'parkedAt']);
     }
     match /maps/{id}     { allow read: if isStaff(); allow write: if isHead(); }
 
