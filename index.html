@@ -199,6 +199,7 @@
   .btn.go{background:#16a34a;border-color:#16a34a;color:#fff}
   .btn.nav{background:#555;border-color:#555;color:#fff}
   .btn{padding:7px 12px;font-size:14px;border-radius:10px}
+  .nophone{font-size:12px;opacity:.75;margin-right:6px;white-space:nowrap}
   .actions{gap:6px;margin-top:10px}
   .fab{padding:11px 18px;font-size:15px}
   #dlg .actions .btn{padding:9px 14px;font-size:15px}
@@ -273,7 +274,7 @@
     <div class="chips" id="chips"></div>
     <div class="two">
       <div><label>Αρ. κλειδιού</label><input id="fKey" inputmode="numeric" enterkeyhint="next" placeholder="προαιρετικό"></div>
-      <div><label>Τηλέφωνο πελάτη</label><input id="fPhone" inputmode="tel" enterkeyhint="done" placeholder="προαιρετικό"></div>
+      <div id="phoneW"><label>Τηλέφωνο πελάτη</label><input id="fPhone" inputmode="tel" enterkeyhint="done" placeholder="προαιρετικό"></div>
     </div>
     <label>Μάρκα και χρώμα</label>
     <input id="fBrand" list="brands" placeholder="Μάρκα (π.χ. Toyota)" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" enterkeyhint="done">
@@ -474,7 +475,7 @@ function prefillFromHistory(){
   let ch = false;
   if (prev.brand && !$('#fBrand').value.trim()){ $('#fBrand').value = prev.brand; ch = true; }
   if (prev.color && !pickedColor){ pickedColor = prev.color; ch = true; }
-  if (prev.phone && !$('#fPhone').value.trim()){ $('#fPhone').value = prev.phone; ch = true; }
+  if (CAN && prev.phone && !$('#fPhone').value.trim()){ $('#fPhone').value = prev.phone; ch = true; }
   if (ch){ renderBrands(); renderCols(); toast('Συμπληρώθηκαν στοιχεία από προηγούμενη επίσκεψη'); }
 }
 $('#cols').addEventListener('click', e => { const b = e.target.closest('[data-col]'); if (!b) return; pickedColor = pickedColor===b.dataset.col ? '' : b.dataset.col; renderCols(); });
@@ -484,7 +485,7 @@ function carCard(v){
   const inside = !v.exitAt;
   const phone = v.phone ? `<a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>` : '';
   return `<div class="card${v.id===openId?' open':''}" data-id="${v.id}">
-    <div class="row"><span class="plate" data-c="${ccOf(v)}">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc"><span class="lb">${esc(v.brand||'')}</span><span class="lp">📍 ${esc(v.location)}</span></span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
+    <div class="row"><span class="plate" data-c="${ccOf(v)}">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc"><span class="lb">${esc(v.brand||'')}</span><span class="lp">📍 ${esc(v.location)}</span></span>${CAN&&inside&&!v.phone?'<span class="nophone" title="Χωρίς τηλέφωνο">📞?</span>':''}<span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
     <div class="more"><div>
     <div class="meta">
       <span>⏱ ${fmtT(v.entryAt)}${inside?` · ${fmtDur(v.entryAt,Date.now())}`:` → ${fmtT(v.exitAt)} · ${fmtDur(v.entryAt,v.exitAt)}`}</span>
@@ -493,7 +494,7 @@ function carCard(v){
       ${v.note?`<span>📝 ${esc(v.note)}</span>`:''}
       ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}${v.exitAt&&v.exitBy?`<span>🚪 Παρέδωσε: ${esc(v.exitBy)}</span>`:''}
     </div>
-    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.2v13.6L9 17.6l6 2.2 6-2.2V4.2L15 6.4 9 4zM9 4v13.6M15 6.4v13.4"/></svg>Στον χάρτη</button>':''}${mapApi?.coords?.(v.location, v.mapId)?'<button class="btn grow nav" data-act="nav">🧭 Πλοήγηση</button>':''}${CAN?'<button class="btn grow" data-act="edit">Επεξεργασία</button>':''}<button class="btn go grow" data-act="exit">Έφυγε ✓</button>${CAN?'<button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button>':''}</div>`:
+    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.2v13.6L9 17.6l6 2.2 6-2.2V4.2L15 6.4 9 4zM9 4v13.6M15 6.4v13.4"/></svg>Στον χάρτη</button>':''}${mapApi?.coords?.(v.location, v.mapId)?'<button class="btn grow nav" data-act="nav">🧭 Πλοήγηση</button>':''}${CAN&&!v.phone?'<button class="btn grow" data-act="phone">📞 Τηλέφωνο</button>':''}${CAN?'<button class="btn grow" data-act="edit">Επεξεργασία</button>':''}<button class="btn go grow" data-act="exit">Έφυγε ✓</button>${CAN?'<button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button>':''}</div>`:
       CAN ? `<div class="actions"><button class="btn grow" data-act="again">Ξανά στο παρκινγκ</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>` : ''}
     </div></div>
   </div>`;
@@ -552,7 +553,8 @@ function openForm(v, prefillPlate){
   $('#fLoc').value = v?.__again ? '' : (v?.location || '');
   pickedMap = v?.__again ? null : (v?.mapId || null);
   $('#fBrand').value = v?.brand || ''; pickedColor = v?.color || ''; sugColor = ''; brandOther = false; renderCols(); renderBrands();
-  $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = v?.phone || ''; $('#fNote').value = v?.note || '';
+  $('#phoneW').style.display = CAN ? '' : 'none';
+  $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = CAN ? (v?.phone || '') : ''; $('#fNote').value = v?.note || '';
   if (v?.__again) editing = null;
   checkDup(); renderChips(); prefillFromHistory(); dlg.showModal();
   setTimeout(()=>($('#fPlate').value ? $('#fLoc') : $('#fPlate')).focus(), 50);
@@ -622,7 +624,7 @@ $('#form').addEventListener('submit', async e=>{
   e.preventDefault();
   const plate = $('#fPlate').value.trim().toUpperCase();
   const data = { plate, country: inferCountry(plate) || (editing && editing.country) || '', plateKey: plateKey(plate), location: $('#fLoc').value.trim(),
-    brand: $('#fBrand').value.trim(), color: pickedColor, keyNo: $('#fKey').value.trim(), phone: $('#fPhone').value.trim(), note: $('#fNote').value.trim(), mapId: pickedMap || null };
+    brand: $('#fBrand').value.trim(), color: pickedColor, keyNo: $('#fKey').value.trim(), phone: CAN ? $('#fPhone').value.trim() : '', note: $('#fNote').value.trim(), mapId: pickedMap || null };
   if (!data.plateKey || !data.location) return;
   try {
     if (editing?.id) await store.update(editing.id, data);
@@ -1062,6 +1064,7 @@ $('#list').addEventListener('click', async e=>{
   if (btn.dataset.act==='nav'){ const c = mapApi.coords(v.location, v.mapId); if (c) window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}&travelmode=walking`, '_blank'); else toast('Δεν υπάρχουν συντεταγμένες για τη θέση'); return; }
   if (btn.dataset.act==='map') mapApi.open({ mode:'browse', focus: v.location, mapId: v.mapId });
   if (btn.dataset.act==='edit') openForm(v);
+  if (btn.dataset.act==='phone'){ const n = (prompt(`Τηλέφωνο πελάτη για το ${v.plate}:`) || '').trim(); if (n){ try { await store.update(v.id, { phone:n }); toast('Αποθηκεύτηκε το τηλέφωνο'); } catch(err){ toast('Σφάλμα: '+err.message); } } }
   if (btn.dataset.act==='again'){ ensureStaff(); openForm({...v, __again:true}); }
   if (btn.dataset.act==='del' && confirm(`Να διαγραφεί οριστικά το ${v.plate} από τη λίστα και το ιστορικό;`)) { try { await store.remove(v.id); toast('Το όχημα διαγράφηκε'); } catch(err){ toast('Σφάλμα διαγραφής: '+err.message); } }
   if (btn.dataset.act==='exit' && confirm(`Έφυγε το ${v.plate};`)) { await store.exit(v.id); toast('Καταγράφηκε έξοδος'); }
