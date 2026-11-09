@@ -513,10 +513,13 @@ function summary(active){
     + (rows.length > MAX ? `<div class="stat"><span>+${rows.length - MAX} ακόμα σημεία</span><b>${rest}</b></div>` : '');
 }
 
+const bn = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function render(){
   const raw = $('#q').value;
   const k = plateKey(raw);
-  if (k !== lastK){ lastK = k; const one = k ? all.filter(v => !v.exitAt && (v.plateKey||plateKey(v.plate)).includes(k)) : []; openId = one.length===1 ? one[0].id : null; }   // ένα αποτέλεσμα → ανοίγει μόνο του
+  const qb = bn(raw);
+  const hit = v => (v.plateKey||plateKey(v.plate)).includes(k) || (qb.length>=2 && bn(v.brand).includes(qb));
+  if (k !== lastK){ lastK = k; const one = k ? all.filter(v => !v.exitAt && hit(v)) : []; openId = one.length===1 ? one[0].id : null; }   // ένα αποτέλεσμα → ανοίγει μόνο του
   const active = all.filter(v=>!v.exitAt);
   if (zoneF && !active.some(v => ((v.location || '').trim() || 'Χωρίς θέση').toLowerCase() === zoneF)) zoneF = '';
   $('#count').textContent = `${active.length} μέσα`;
@@ -524,7 +527,7 @@ function render(){
   let html = '';
 
   if (k) {
-    const m = all.filter(v => (v.plateKey||plateKey(v.plate)).includes(k));
+    const m = all.filter(hit);
     const mIn = m.filter(v=>!v.exitAt), mOut = m.filter(v=>v.exitAt);
     if (!m.length) html = `<div class="empty">Καμία εγγραφή για «${esc(raw.toUpperCase())}».${true?'<br><br><button class="btn primary" id="addFromSearch">+ Καταχώρηση αυτής της πινακίδας</button>':''}</div>`;
     else {
