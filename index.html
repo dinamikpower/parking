@@ -878,10 +878,18 @@ function prep(src, sx, sy, sw, sh, isolateChars = true){
 }
 window.__iso = { otsu, components, isolate, erode3 };
 
-function stopScan(){
-  scanning = false;
-  stream?.getTracks().forEach(t=>t.stop()); stream = null; vid.srcObject = null; track = null; torchOn = false; $('#scanTools').hidden = true;
+let keepTimer = 0;
+function releaseStream(){
+  clearTimeout(keepTimer);
+  stream?.getTracks().forEach(t=>t.stop()); stream = null; vid.srcObject = null; track = null; torchOn = false;
 }
+function stopScan(){
+  scanning = false; $('#scanTools').hidden = true;
+  if (torchOn && track){ try { track.applyConstraints({ advanced:[{ torch:false }] }); } catch {} torchOn = false; }
+  // η κάμερα μένει «ζεστή» για 2 λεπτά ώστε να μη ζητάει ξανά άδεια σε κάθε σάρωση
+  clearTimeout(keepTimer); keepTimer = setTimeout(releaseStream, 120000);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && !scanning) releaseStream(); });
 /* Πρόταση χρώματος οχήματος από το κάδρο: δείγματα γύρω/πάνω από την πινακίδα, ταξινόμηση στα χρώματα της φόρμας */
 function nameColor(r,g,b){
   r/=255; g/=255; b/=255; const mx = Math.max(r,g,b), mn = Math.min(r,g,b), d = mx-mn, v = mx, sat = mx ? d/mx : 0;
@@ -931,7 +939,6 @@ async function aiScan(){
     if (!vw){ await sleep(200); continue; }
     try {
       const br = brightness(); lowCount = br < 60 ? lowCount+1 : 0; dark = lowCount >= 2;
-      if (dark && torchCap && !torchOn && !torchManual) await setTorch(true);
       const sx = vw*.02, sy = vh*.18, sw = vw*.96, sh = vh*.64;
       const t0 = performance.now();
       const res = await readPlates(vid, sx, sy, sw, sh);
@@ -953,7 +960,7 @@ async function aiScan(){
         }
       }
       out.innerHTML = (shown ? `Διαβάζω: <b>${esc(shown)}</b> …` : 'Στόχευσε την πινακίδα μέσα στο πράσινο πλαίσιο.')
-        + (dark && !torchOn ? `<div style="font-size:13px;margin-top:4px">🌙 Χαμηλός φωτισμός${torchCap ? '' : ' — φώτισε την πινακίδα (π.χ. με φακό άλλου κινητού)'}</div>` : '')
+        + (dark && !torchOn ? `<div style="font-size:13px;margin-top:4px">🌙 Χαμηλός φωτισμός${torchCap ? ' — πάτα «Φλας» αν χρειάζεται' : ' — φώτισε την πινακίδα (π.χ. με φακό άλλου κινητού)'}</div>` : '')
         + `<div style="font-size:12px;margin-top:4px">Ανάγνωση #${n} · ${Math.round(performance.now()-t0)} ms${best ? ` · βεβαιότητα ${Math.round(best.conf*100)}%` : ' · δεν βρέθηκε πινακίδα'}</div>`;
     } catch(err){
       out.textContent = 'Σφάλμα αναγνώρισης: ' + (err && err.message || err);
@@ -966,9 +973,9 @@ async function aiScan(){
 async function openScan(cb){
   onScan = cb; out.textContent = 'Άνοιγμα κάμερας…'; scanDlg.showModal();
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} }, audio:false });
+    clearTimeout(keepTimer);
+    if (!(stream && stream.active)) stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} }, audio:false });
     vid.srcObject = stream; await vid.play(); fitVideo(); await initTrack();
-    await sleep(500); if (torchCap && brightness() < 60){ lowCount = 2; await setTorch(true); }      // σκοτάδι από την αρχή: φλας αμέσως
   } catch(e){
     out.textContent = 'Δεν δόθηκε πρόσβαση στην κάμερα. Πάτα «Φωτογραφία» για να τραβήξεις κοντινή φωτογραφία της πινακίδας.';
     return;
@@ -985,7 +992,6 @@ async function openScan(cb){
     try {
       // χαμηλός φωτισμός: άναψε αυτόματα το φλας (αν το υποστηρίζει η συσκευή) εκτός αν το έχει ρυθμίσει ο χρήστης
       const br = brightness(); lowCount = br < 60 ? lowCount+1 : 0; dark = lowCount >= 2;
-      if (dark && torchCap && !torchOn && !torchManual) await setTorch(true);
       const c = prep(vid, vw*.05, vh*.30, vw*.9, vh*.40);
       const pv = $('#scanPrev'); pv.width = Math.round(c.width/3); pv.height = Math.round(c.height/3);
       pv.getContext('2d').drawImage(c, 0, 0, pv.width, pv.height);   // τι «βλέπει» η αναγνώριση
@@ -1007,7 +1013,7 @@ async function openScan(cb){
         }
       }
       out.innerHTML = (p ? `Διαβάζω: <b>${p}</b> …` : 'Στόχευσε την πινακίδα μέσα στο πράσινο πλαίσιο.')
-        + (dark && !torchOn ? `<div style="font-size:13px;margin-top:4px">🌙 Χαμηλός φωτισμός${torchCap ? '' : ' — φώτισε την πινακίδα (π.χ. με φακό άλλου κινητού)'}</div>` : '')
+        + (dark && !torchOn ? `<div style="font-size:13px;margin-top:4px">🌙 Χαμηλός φωτισμός${torchCap ? ' — πάτα «Φλας» αν χρειάζεται' : ' — φώτισε την πινακίδα (π.χ. με φακό άλλου κινητού)'}</div>` : '')
         + `<div style="font-size:12px;margin-top:4px">Ανάγνωση #${n}: «${esc(raw)||'—'}»</div>`;
     } catch(err){
       out.textContent = 'Σφάλμα αναγνώρισης: ' + (err && err.message || err);
