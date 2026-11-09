@@ -1081,7 +1081,15 @@ function scanChoice(p, col){
   chDlg.showModal();
 }
 window.__scanChoice = scanChoice;
-$('#camQ').onclick = ()=>openScan((p, col)=>{ $('#q').value = p; render(); scanChoice(p, col); });
+// Μετά τη σάρωση δεν ρωτάμε τίποτα: αποφασίζει το αππ ανάλογα με την κατάσταση του οχήματος
+const onScanned = (p, col)=>{
+  const k = plateKey(p), cur = all.find(v => !v.exitAt && (v.plateKey||plateKey(v.plate)) === k);
+  if (!cur){ ensureStaff(); $('#q').value = ''; render(); openForm(null, p); if (col && !pickedColor){ sugColor = col; renderCols(); } }   // νέο όχημα → καταχώρηση
+  else if (!cur.location){ $('#q').value = p; render(); parkOnMap(cur); }                                                            // περιμένει παρκάρισμα → χάρτης
+  else { $('#q').value = p; render(); openId = cur.id; render(); }                                                                  // ήδη παρκαρισμένο → ανοίγει η κάρτα (θέση, Έφυγε)
+};
+window.__onScanned = onScanned;
+$('#camQ').onclick = ()=>openScan(onScanned);
 let ofmT = 0;
 const ofmGo = () => { if (Date.now()-ofmT < 800) return; if (openFoundOnMap()) ofmT = Date.now(); };
 $('#q').addEventListener('keydown', e => { if (e.key==='Enter' || e.keyCode===13){ e.preventDefault(); ofmGo(); } });
