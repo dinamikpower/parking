@@ -1061,13 +1061,11 @@ const chDlg = document.createElement('dialog'); chDlg.id = 'chDlg'; document.bod
 chDlg.addEventListener('click', e => { if (e.target === chDlg) chDlg.close(); });
 function scanChoice(p, col){
   const k = plateKey(p), cur = all.find(v => !v.exitAt && (v.plateKey||plateKey(v.plate)) === k);
-  const where = cur && mapApi?.hasSpot(cur.location, cur.mapId);
   chDlg.innerHTML = `<div class="chb"><div class="chp"><span class="plate" data-c="${ccOf({plate:p})}">${esc(p)}</span></div>
     <div class="chs">${cur ? (cur.location ? `Μέσα στο παρκινγκ · 📍 ${esc(cur.location)}` : 'Αναμένει παρκάρισμα · χωρίς θέση') : 'Δεν είναι μέσα αυτή τη στιγμή'}</div>
     ${cur && !cur.location ? `<button class="btn primary chbtn" data-c="park">📍 Παρκάρισμα <small>ορισμός θέσης</small></button>` : ''}
     <button class="btn ${cur ? '' : 'primary'} chbtn" data-c="in">⬇ Είσοδος <small>νέα καταχώρηση</small></button>
     <button class="btn ${cur ? 'go' : ''} chbtn" data-c="out" ${cur ? '' : 'disabled'}>⬆ Έξοδος <small>${cur ? 'το όχημα έφυγε' : 'δεν είναι μέσα'}</small></button>
-    ${cur ? `<button class="btn chbtn" data-c="where">📍 Πού βρίσκεται${where ? '' : ' <small>(στοιχεία οχήματος)</small>'}</button>` : ''}
     <button class="btn chx" data-c="x">Ακύρωση</button></div>`;
   chDlg.onclick = async e => {
     if (e.target === chDlg) return chDlg.close();
@@ -1076,20 +1074,11 @@ function scanChoice(p, col){
     if (c === 'in'){ ensureStaff(); $('#q').value = ''; render(); openForm(null, p); if (col && !pickedColor){ sugColor = col; renderCols(); } }
     if (c === 'out' && cur){ ensureStaff(); try { await store.exit(cur.id); toast('Καταγράφηκε έξοδος · ' + cur.plate); } catch (err) { toast('Σφάλμα: ' + err.message); } $('#q').value = ''; render(); }
     if (c === 'park' && cur) parkOnMap(cur);
-    if (c === 'where'){ $('#q').value = p; render(); if (!openFoundOnMap()) openId = cur.id, render(); }
   };
   chDlg.showModal();
 }
 window.__scanChoice = scanChoice;
-// Μετά τη σάρωση δεν ρωτάμε τίποτα: αποφασίζει το αππ ανάλογα με την κατάσταση του οχήματος
-const onScanned = (p, col)=>{
-  const k = plateKey(p), cur = all.find(v => !v.exitAt && (v.plateKey||plateKey(v.plate)) === k);
-  if (!cur){ ensureStaff(); $('#q').value = ''; render(); openForm(null, p); if (col && !pickedColor){ sugColor = col; renderCols(); } }   // νέο όχημα → καταχώρηση
-  else if (!cur.location){ $('#q').value = ''; render(); parkOnMap(cur); }                                                            // περιμένει παρκάρισμα → χάρτης
-  else { $('#q').value = ''; tab = 'active'; zoneF = ''; lastK = ''; openId = cur.id; render(); setTimeout(() => document.querySelector(`.card[data-id="${cur.id}"]`)?.scrollIntoView({ block:'center', behavior:'smooth' }), 60); }                                                                  // ήδη παρκαρισμένο → ανοίγει η κάρτα (θέση, Έφυγε)
-};
-window.__onScanned = onScanned;
-$('#camQ').onclick = ()=>openScan(onScanned);
+$('#camQ').onclick = ()=>openScan((p, col)=>scanChoice(p, col));
 let ofmT = 0;
 const ofmGo = () => { if (Date.now()-ofmT < 800) return; if (openFoundOnMap()) ofmT = Date.now(); };
 $('#q').addEventListener('keydown', e => { if (e.key==='Enter' || e.keyCode===13){ e.preventDefault(); ofmGo(); } });
