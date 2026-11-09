@@ -1048,6 +1048,15 @@ function openFoundOnMap(){
   $('#q').blur(); mapApi.open({ mode:'browse', focus:m[0].location, mapId:m[0].mapId }); return true;
 }
 // Σάρωση πινακίδας: ρωτά τι θέλεις να γίνει (είσοδος / έξοδος / πού βρίσκεται)
+// Παρκάρισμα: ανοίγει κατευθείαν ο χάρτης για να διαλέξει ο υπάλληλος το σημείο
+function parkOnMap(v){
+  ensureStaff();
+  if (!mapApi) return openForm({ ...v, __park:true });
+  mapApi.open({ mode:'pick', onPick: async (label, mapId) => {
+    try { await store.update(v.id, { location: label, mapId: mapId || null, parkedBy: staff(), parkedAt: Date.now() }); toast('Η θέση αποθηκεύτηκε ✓'); $('#q').value = ''; render(); }
+    catch (err) { toast('Σφάλμα: ' + err.message); }
+  } });
+}
 const chDlg = document.createElement('dialog'); chDlg.id = 'chDlg'; document.body.append(chDlg);
 chDlg.addEventListener('click', e => { if (e.target === chDlg) chDlg.close(); });
 function scanChoice(p, col){
@@ -1066,7 +1075,7 @@ function scanChoice(p, col){
     chDlg.close();
     if (c === 'in'){ ensureStaff(); $('#q').value = ''; render(); openForm(null, p); if (col && !pickedColor){ sugColor = col; renderCols(); } }
     if (c === 'out' && cur){ ensureStaff(); try { await store.exit(cur.id); toast('Καταγράφηκε έξοδος · ' + cur.plate); } catch (err) { toast('Σφάλμα: ' + err.message); } $('#q').value = ''; render(); }
-    if (c === 'park' && cur){ ensureStaff(); openForm({ ...cur, __park:true }); }
+    if (c === 'park' && cur) parkOnMap(cur);
     if (c === 'where'){ $('#q').value = p; render(); if (!openFoundOnMap()) openId = cur.id, render(); }
   };
   chDlg.showModal();
@@ -1098,7 +1107,7 @@ $('#list').addEventListener('click', async e=>{
   if (btn.dataset.act==='nav'){ const c = mapApi.coords(v.location, v.mapId); if (c) window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}&travelmode=walking`, '_blank'); else toast('Δεν υπάρχουν συντεταγμένες για τη θέση'); return; }
   if (btn.dataset.act==='map') mapApi.open({ mode:'browse', focus: v.location, mapId: v.mapId });
   if (btn.dataset.act==='edit') openForm(v);
-  if (btn.dataset.act==='park'){ ensureStaff(); openForm({ ...v, __park:true }); }
+  if (btn.dataset.act==='park') parkOnMap(v);
   if (btn.dataset.act==='phone'){ const n = (prompt(`Τηλέφωνο πελάτη για το ${v.plate}:`) || '').trim(); if (n){ try { await store.update(v.id, { phone:n }); toast('Αποθηκεύτηκε το τηλέφωνο'); } catch(err){ toast('Σφάλμα: '+err.message); } } }
   if (btn.dataset.act==='again'){ ensureStaff(); openForm({...v, __again:true}); }
   if (btn.dataset.act==='del' && confirm(`Να διαγραφεί οριστικά το ${v.plate} από τη λίστα και το ιστορικό;`)) { try { await store.remove(v.id); toast('Το όχημα διαγράφηκε'); } catch(err){ toast('Σφάλμα διαγραφής: '+err.message); } }
