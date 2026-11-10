@@ -1253,7 +1253,10 @@ const saveHide = () => { try { localStorage.setItem('parking-req-hide', JSON.str
 function drawReqs(){
   const act = CAN ? [] : reqs.filter(r => !r.doneAt && Date.now() - r.at < REQ_TTL && !reqHide.has(r.id));
   const taken = reqs.filter(r => r.doneAt && Date.now() - r.doneAt < TAKEN_MS && !reqHide.has(r.id) && r.doneBy !== staff());
-  reqBar.innerHTML = taken.map(r => `<div class="req taken" data-r="${r.id}"><button class="rx" data-q="hide" aria-label="Κλείσιμο">✕</button><div class="rt">✓ ΑΝΑΛΗΦΘΗΚΕ</div>
+  const mine = CAN ? [] : reqs.filter(r => r.doneAt && Date.now() - r.doneAt < TAKEN_MS && !reqHide.has(r.id) && r.doneBy === staff());
+  reqBar.innerHTML = mine.map(r => `<div class="req taken" data-r="${r.id}"><button class="rx" data-q="hide" aria-label="Κλείσιμο">✕</button><div class="rt">✓ ΤΟ ΕΧΕΙΣ ΑΝΑΛΑΒΕΙ</div>
+    <div class="rm"><span class="plate" data-c="${esc(r.country||'')}">${esc(r.plate)}</span>${r.location ? `<span class="rl">📍 ${esc(r.location)}</span>` : ''}</div>
+    <div class="ra"><button class="pri" data-q="show">Δες το</button><button data-q="hide">Εντάξει</button></div></div>`).join('') + taken.map(r => `<div class="req taken" data-r="${r.id}"><button class="rx" data-q="hide" aria-label="Κλείσιμο">✕</button><div class="rt">✓ ΑΝΑΛΗΦΘΗΚΕ</div>
     <div class="rm"><span class="plate" data-c="${esc(r.country||'')}">${esc(r.plate)}</span><span class="rl">${esc(r.doneBy||'Κάποιος')} το παίρνει</span></div>
     <div class="ra"><button data-q="hide">Εντάξει</button></div></div>`).join('') + act.map(r => `<div class="req" data-r="${r.id}"><button class="rx" data-q="hide" aria-label="Κλείσιμο">✕</button><div class="rt">🔔 ΖΗΤΕΙΤΑΙ ΤΟ ΟΧΗΜΑ · από ${esc(r.by||'επικεφαλής')}</div>
     <div class="rm"><span class="plate" data-c="${esc(r.country||'')}">${esc(r.plate)}</span>${r.location ? `<span class="rl">📍 ${esc(r.location)}</span>` : ''}</div>
