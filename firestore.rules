@@ -36,5 +36,11 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if d == 'init' && isOwner() && noInit();
     }
+
+    match /pushTokens/{t} {
+      allow read: if isHead();
+      allow create, update: if isStaff() && request.resource.data.uid == request.auth.uid;
+      allow delete: if isStaff();
+    }
   }
 }

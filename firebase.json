@@ -11,7 +11,8 @@
       "README.md",
       "**/.*",
       "**/node_modules/**",
-      "tools/**"
+      "tools/**",
+      "functions/**"
     ],
     "headers": [
       {
@@ -33,5 +34,14 @@
         ]
       }
     ]
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules"
+      ]
+    }
+  ]
 }

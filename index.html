@@ -389,7 +389,8 @@ if (LIVE) {
   const app = initializeApp(CFG);
   const db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) });
   ({ requireLogin: window.__rl } = await import('./auth.js?v=9'));
-  ME = await window.__rl(app, db, fs, CFG);           // δεν προχωράει η εφαρμογή αν δεν γίνει είσοδος
+  ME = await window.__rl(app, db, fs, CFG);
+  window.__fb = { app, db, fs };           // δεν προχωράει η εφαρμογή αν δεν γίνει είσοδος
   const col = fs.collection(db, 'vehicles');
   store = {
     subscribe(cb){
@@ -1224,6 +1225,38 @@ store.subscribeRequests?.(rows => {
   if (!reqFirst && fresh.length && !CAN){ beep(); navigator.vibrate?.([250,120,250]); }
   reqFirst = false; drawReqs();
 });
+
+/* ---------- Push ειδοποιήσεις (υπάλληλοι, και με κλειστό αππ) ---------- */
+async function pushRegister(){
+  const { app, db, fs } = window.__fb;
+  const { getMessaging, getToken } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js');
+  const reg = await navigator.serviceWorker.ready;
+  const token = await getToken(getMessaging(app), { serviceWorkerRegistration: reg });
+  if (!token) throw new Error('Δεν δόθηκε token');
+  await fs.setDoc(fs.doc(db, 'pushTokens', token), { uid: ME.uid, name: staff(), head: false, at: Date.now() });
+}
+(function pushInit(){
+  if (!LIVE || !ME || ME.head || !window.__fb) return;
+  const ok = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+  const bar = document.createElement('div');
+  bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(112px + env(safe-area-inset-bottom));z-index:1500;display:none;padding:12px 14px;border-radius:14px;background:var(--card);color:var(--text);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:14px;align-items:center;gap:10px';
+  document.body.append(bar);
+  if (!ok){
+    if (/iPhone|iPad/.test(navigator.userAgent) && !localStorage.getItem('push-hint')){
+      bar.style.display = 'flex'; bar.innerHTML = '<span style="flex:1">Για ειδοποιήσεις: Κοινοποίηση → «Προσθήκη στην Αρχική Οθόνη» και άνοιξε το αππ από εκεί.</span><button class="btn">OK</button>';
+      bar.querySelector('button').onclick = () => { localStorage.setItem('push-hint','1'); bar.remove(); };
+    }
+    return;
+  }
+  if (Notification.permission === 'granted'){ pushRegister().catch(() => {}); return; }
+  if (Notification.permission === 'denied') return;
+  bar.style.display = 'flex'; bar.innerHTML = '<span style="flex:1">🔔 Θέλεις ειδοποίηση όταν ζητείται όχημα, ακόμα και με κλειστό αππ;</span><button class="btn primary">Ναι</button><button class="btn" data-x>Όχι</button>';
+  bar.querySelector('[data-x]').onclick = () => bar.remove();
+  bar.querySelector('.primary').onclick = async () => {
+    try { const p = await Notification.requestPermission(); if (p === 'granted'){ await pushRegister(); toast('Οι ειδοποιήσεις ενεργοποιήθηκαν'); } } catch (e) { toast('Σφάλμα: ' + e.message); }
+    bar.remove();
+  };
+})();
 setInterval(drawReqs, 15000);
 store.subscribe(rows => { window.__status?.(''); all = rows.map(r=>({...r, plateKey: r.plateKey || plateKey(r.plate)})); render(); mapApi.refresh(); });
 setInterval(render, 60000); // ανανέωση διάρκειας
