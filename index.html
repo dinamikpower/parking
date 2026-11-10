@@ -1165,8 +1165,9 @@ $('#list').addEventListener('click', async e=>{
   if (btn.dataset.act==='edit') openForm(v);
   if (btn.dataset.act==='park') parkOnMap(v);
   if (btn.dataset.act==='need'){
-    if (reqs.some(r => r.vehicleId === v.id && !r.doneAt && Date.now() - r.at < REQ_TTL)) return toast('Έχει ήδη σταλεί ειδοποίηση');
-    try { await store.request({ vehicleId:v.id, plate:v.plate, country:ccOf(v), location:v.location||'', mapId:v.mapId||null, brand:v.brand||'', by:staff() }); toast('Στάλθηκε ειδοποίηση ✓'); }
+    const prev = reqs.find(r => r.vehicleId === v.id && !r.doneAt && Date.now() - r.at < REQ_TTL);
+    if (prev && Date.now() - prev.at < 30000) return toast('Μόλις στάλθηκε — περίμενε λίγο');
+    try { if (prev) await store.cancelRequest(prev.id); await store.request({ vehicleId:v.id, plate:v.plate, country:ccOf(v), location:v.location||'', mapId:v.mapId||null, brand:v.brand||'', by:staff() }); toast(prev ? 'Στάλθηκε ξανά ✓' : 'Στάλθηκε ειδοποίηση ✓'); }
     catch (err) { toast('Σφάλμα: ' + err.message); }
   }
   if (btn.dataset.act==='phone'){ const n = (prompt(`Τηλέφωνο πελάτη για το ${v.plate}:`) || '').trim(); if (n){ try { await store.update(v.id, { phone:n }); toast('Αποθηκεύτηκε το τηλέφωνο'); } catch(err){ toast('Σφάλμα: '+err.message); } } }
