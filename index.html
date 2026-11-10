@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
 <meta name="theme-color" content="#1C2223">
+<script>(function(){var d=document.documentElement;function fit(){var h=innerHeight;d.style.setProperty('--ah',Math.round(h)+'px')}fit();addEventListener('resize',fit);addEventListener('orientationchange',function(){setTimeout(fit,150)});addEventListener('pageshow',fit);addEventListener('load',function(){fit();[60,250,700,1500,3000].forEach(function(t){setTimeout(fit,t)})});addEventListener('touchstart',fit,{passive:true,once:true});function z(){if(document.body.scrollTop)document.body.scrollTop=0;if(d.scrollTop)d.scrollTop=0}document.addEventListener('scroll',z,true);document.addEventListener('visibilitychange',function(){if(!document.hidden)fit()})})()</script>
 <script>document.documentElement.dataset.theme=localStorage.getItem('parking-theme')||'dark'</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -305,6 +306,11 @@
   .tabbar .tabs{padding-bottom:max(6px, calc(env(safe-area-inset-bottom) - 22px))}
   .fab{bottom:calc(18px + max(6px, env(safe-area-inset-bottom) - 22px))}
   #list{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+  /* ύψος = ακριβώς το ορατό ύψος (το μετράει το JS), ώστε η μπάρα να μην «πέφτει» στο πρώτο άνοιγμα */
+  body{height:var(--ah,100dvh);position:relative}
+  html.lock body{position:fixed}
+  .tabbar,.fab{position:absolute!important}
+  html,body{overflow:hidden;overflow:clip}
 </style>
 </head>
 <body>
