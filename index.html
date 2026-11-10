@@ -194,6 +194,8 @@
   .req .ra{display:flex;gap:8px}
   .req .ra button{flex:1;border:0;border-radius:10px;padding:10px;font:inherit;font-size:15px;font-weight:700;background:#fff;color:#111}
   .req .ra button.pri{background:#111;color:#fff}
+  .req.taken{background:#222;border:1px solid #444}
+  .req.taken .rl{font-size:17px}
   #chDlg{position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;width:min(520px,100vw);max-width:100vw;border-radius:22px 22px 0 0;max-height:calc(100dvh - 12px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 -10px 40px rgba(0,0,0,.5);animation:sheetUp .3s cubic-bezier(.2,.85,.25,1);padding:0}
   #chDlg::backdrop{animation:fadeIn .25s ease}
   #chDlg .chb{padding:10px 18px calc(14px + env(safe-area-inset-bottom));gap:8px;text-align:left}
@@ -1173,9 +1175,13 @@ let reqs = [], reqFirst = true; const reqSeen = new Set();
 const reqBar = document.createElement('div'); reqBar.id = 'reqBar'; document.body.append(reqBar);
 function beep(){ try { const A = window.AudioContext || window.webkitAudioContext, c = new A(); [0, .22].forEach(t => { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = 880; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(.25, c.currentTime + t); g.gain.exponentialRampToValueAtTime(.001, c.currentTime + t + .18); o.start(c.currentTime + t); o.stop(c.currentTime + t + .2); }); } catch {} }
 function focusCar(id){ $('#q').value = ''; tab = 'active'; zoneF = ''; lastK = ''; openId = id; render(); setTimeout(() => document.querySelector(`.card[data-id="${id}"]`)?.scrollIntoView({ block:'center', behavior:'smooth' }), 60); }
+const reqHide = new Set(), TAKEN_MS = 3*60*1000;
 function drawReqs(){
   const act = reqs.filter(r => !r.doneAt && Date.now() - r.at < REQ_TTL);
-  reqBar.innerHTML = act.map(r => `<div class="req" data-r="${r.id}"><div class="rt">🔔 ΖΗΤΕΙΤΑΙ ΤΟ ΟΧΗΜΑ · από ${esc(r.by||'επικεφαλής')}</div>
+  const taken = reqs.filter(r => r.doneAt && Date.now() - r.doneAt < TAKEN_MS && !reqHide.has(r.id));
+  reqBar.innerHTML = taken.map(r => `<div class="req taken" data-r="${r.id}"><div class="rt">✓ ΑΝΑΛΗΦΘΗΚΕ</div>
+    <div class="rm"><span class="plate" data-c="${esc(r.country||'')}">${esc(r.plate)}</span><span class="rl">${esc(r.doneBy||'Κάποιος')} το παίρνει</span></div>
+    <div class="ra"><button data-q="hide">Εντάξει</button></div></div>`).join('') + act.map(r => `<div class="req" data-r="${r.id}"><div class="rt">🔔 ΖΗΤΕΙΤΑΙ ΤΟ ΟΧΗΜΑ · από ${esc(r.by||'επικεφαλής')}</div>
     <div class="rm"><span class="plate" data-c="${esc(r.country||'')}">${esc(r.plate)}</span>${r.location ? `<span class="rl">📍 ${esc(r.location)}</span>` : ''}</div>
     <div class="ra">${CAN ? `<button data-q="cancel">Ακύρωση</button>` : `<button class="pri" data-q="done">✓ Το παίρνω</button>`}<button data-q="show">Δες το</button></div></div>`).join('');
 }
@@ -1184,6 +1190,7 @@ reqBar.onclick = async e => {
   try {
     if (b.dataset.q === 'done'){ await store.doneRequest(id); toast('Ευχαριστώ — το έχεις αναλάβει'); }
     else if (b.dataset.q === 'cancel') await store.cancelRequest(id);
+    else if (b.dataset.q === 'hide'){ reqHide.add(id); drawReqs(); }
     else focusCar(r.vehicleId);
   } catch (err) { toast('Σφάλμα: ' + err.message); }
 };
@@ -1194,7 +1201,7 @@ store.subscribeRequests?.(rows => {
   if (!reqFirst && fresh.length && !CAN){ beep(); navigator.vibrate?.([250,120,250]); }
   reqFirst = false; drawReqs();
 });
-setInterval(drawReqs, 60000);
+setInterval(drawReqs, 15000);
 store.subscribe(rows => { window.__status?.(''); all = rows.map(r=>({...r, plateKey: r.plateKey || plateKey(r.plate)})); render(); mapApi.refresh(); });
 setInterval(render, 60000); // ανανέωση διάρκειας
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
