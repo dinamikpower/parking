@@ -187,7 +187,9 @@
   #reqBar{position:fixed;top:calc(env(safe-area-inset-top) + 23px);left:8px;right:8px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
   .req{pointer-events:auto;background:#16a34a;color:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.45);animation:reqIn .35s cubic-bezier(.2,.85,.25,1)}
   @keyframes reqIn{from{transform:translateY(-130%);opacity:0}to{transform:none;opacity:1}}
-  .req .rt{font-size:13px;font-weight:700;opacity:.9}
+  .req{position:relative}
+  .req .rt{font-size:13px;font-weight:700;opacity:.9;padding-right:30px}
+  .req .rx{position:absolute;top:6px;right:6px;width:30px;height:30px;border:0;border-radius:50%;background:rgba(0,0,0,.25);color:#fff;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
   .req .rm{display:flex;align-items:center;gap:10px;margin:6px 0 10px}
   .req .rm .plate{font-size:20px}
   .req .rl{font-size:20px;font-weight:800}
@@ -1201,11 +1203,11 @@ function beep(){ try { const A = window.AudioContext || window.webkitAudioContex
 function focusCar(id){ $('#q').value = ''; tab = 'active'; zoneF = ''; lastK = ''; openId = id; render(); setTimeout(() => document.querySelector(`.card[data-id="${id}"]`)?.scrollIntoView({ block:'center', behavior:'smooth' }), 60); }
 const reqHide = new Set(), TAKEN_MS = 3*60*1000;
 function drawReqs(){
-  const act = CAN ? [] : reqs.filter(r => !r.doneAt && Date.now() - r.at < REQ_TTL);
+  const act = CAN ? [] : reqs.filter(r => !r.doneAt && Date.now() - r.at < REQ_TTL && !reqHide.has(r.id));
   const taken = reqs.filter(r => r.doneAt && Date.now() - r.doneAt < TAKEN_MS && !reqHide.has(r.id));
-  reqBar.innerHTML = taken.map(r => `<div class="req taken" data-r="${r.id}"><div class="rt">✓ ΑΝΑΛΗΦΘΗΚΕ</div>
+  reqBar.innerHTML = taken.map(r => `<div class="req taken" data-r="${r.id}"><button class="rx" data-q="hide" aria-label="Κλείσιμο">✕</button><div class="rt">✓ ΑΝΑΛΗΦΘΗΚΕ</div>
     <div class="rm"><span class="plate" data-c="${esc(r.country||'')}">${esc(r.plate)}</span><span class="rl">${esc(r.doneBy||'Κάποιος')} το παίρνει</span></div>
-    <div class="ra"><button data-q="hide">Εντάξει</button></div></div>`).join('') + act.map(r => `<div class="req" data-r="${r.id}"><div class="rt">🔔 ΖΗΤΕΙΤΑΙ ΤΟ ΟΧΗΜΑ · από ${esc(r.by||'επικεφαλής')}</div>
+    <div class="ra"><button data-q="hide">Εντάξει</button></div></div>`).join('') + act.map(r => `<div class="req" data-r="${r.id}"><button class="rx" data-q="hide" aria-label="Κλείσιμο">✕</button><div class="rt">🔔 ΖΗΤΕΙΤΑΙ ΤΟ ΟΧΗΜΑ · από ${esc(r.by||'επικεφαλής')}</div>
     <div class="rm"><span class="plate" data-c="${esc(r.country||'')}">${esc(r.plate)}</span>${r.location ? `<span class="rl">📍 ${esc(r.location)}</span>` : ''}</div>
     <div class="ra">${CAN ? `<button data-q="cancel">Ακύρωση</button>` : `<button class="pri" data-q="done">✓ Το παίρνω</button>`}<button data-q="show">Δες το</button></div></div>`).join('');
 }
