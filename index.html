@@ -287,6 +287,14 @@
   html,body{overscroll-behavior-y:none}
   .tabbar{transform:translateZ(0);-webkit-transform:translateZ(0);will-change:transform;bottom:0!important}
   .fab{will-change:transform}
+  /* σταθερό ύψος κάτω μπάρας: δεν εξαρτάται από κείμενο/ένδειξη ενεργής καρτέλας */
+  .tabbar{height:calc(74px + env(safe-area-inset-bottom));box-sizing:border-box}
+  .tabbar .tabs{height:100%;box-sizing:border-box;align-content:start;padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+  .tabbar .tab{position:relative;height:58px;box-sizing:border-box;justify-content:flex-start;padding-top:6px;white-space:nowrap;overflow:visible;font-size:11px;letter-spacing:-.1px}
+  .tabbar .tab span{display:block;line-height:1.2}
+  .tabbar .tab.on::after{position:absolute;left:50%;transform:translateX(-50%);bottom:0;margin:0}
+  .nav-sp{height:58px;box-sizing:border-box;padding-bottom:0;align-items:flex-end}
+  body{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
