@@ -302,10 +302,10 @@
   header{flex:none}
   #list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;max-width:none;margin:0;padding:12px max(14px,calc((100% - 760px)/2)) calc(120px + env(safe-area-inset-bottom))}
   /* κάτω μπάρα 30px πιο χαμηλά (κρατά το safe-area του iPhone) */
-  .tabbar{height:calc(60px + max(11px, env(safe-area-inset-bottom) - 17px))}
-  .tabbar .tabs{padding-bottom:max(11px, calc(env(safe-area-inset-bottom) - 17px))}
-  .fab{bottom:calc(18px + max(11px, env(safe-area-inset-bottom) - 17px))}
-  #list{padding-bottom:calc(95px + env(safe-area-inset-bottom))}
+  .tabbar{height:calc(60px + max(18px, env(safe-area-inset-bottom) - 10px))}
+  .tabbar .tabs{padding-bottom:max(18px, calc(env(safe-area-inset-bottom) - 10px))}
+  .fab{bottom:calc(18px + max(18px, env(safe-area-inset-bottom) - 10px))}
+  #list{padding-bottom:calc(102px + env(safe-area-inset-bottom))}
   /* ύψος = ακριβώς το ορατό ύψος (το μετράει το JS), ώστε η μπάρα να μην «πέφτει» στο πρώτο άνοιγμα */
   body{height:var(--ah,100dvh);position:relative}
   html.lock body{position:fixed}
