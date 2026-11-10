@@ -18,6 +18,12 @@ service cloud.firestore {
       // (έξοδος / παρκάρισμα) αλλάζουν μόνο exitAt/exitBy ή θέση (location/mapId/parkedBy/parkedAt)
       allow update: if isStaff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['exitAt', 'exitBy', 'location', 'mapId', 'parkedBy', 'parkedAt']);
     }
+    // αιτήματα «χρειάζεται το όχημα»: δημιουργεί/ακυρώνει ο επικεφαλής, οι υπάλληλοι μόνο τα σημειώνουν ως αναληφθέντα
+    match /requests/{id} {
+      allow read: if isStaff();
+      allow create, delete: if isHead();
+      allow update: if isStaff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doneAt', 'doneBy']);
+    }
     match /maps/{id}     { allow read: if isStaff(); allow write: if isHead(); }
 
     match /staff/{uid} {
