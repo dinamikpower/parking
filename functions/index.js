@@ -20,6 +20,8 @@ exports.notifyRequest = onDocumentCreated({ document: 'requests/{id}', region: '
     },
     webpush: { headers: { Urgency: 'high', TTL: '3600' } },
   });
+  console.log(`push ${event.params.id}: tokens=${tokens.length} ok=${res.successCount} fail=${res.failureCount}`);
+  res.responses.forEach((x, i) => { if (x.error) console.log('push error', tokens[i].slice(0, 12), x.error.code, x.error.message); });
   // καθάρισμα άκυρων tokens
   const dead = [];
   res.responses.forEach((x, i) => {
