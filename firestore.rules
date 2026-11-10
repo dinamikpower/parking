@@ -22,7 +22,7 @@ service cloud.firestore {
     match /requests/{id} {
       allow read: if isStaff();
       allow create, delete: if isHead();
-      allow update: if isStaff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doneAt', 'doneBy']);
+      allow update: if isStaff() && resource.data.doneAt == null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doneAt', 'doneBy']);
     }
     match /maps/{id}     { allow read: if isStaff(); allow write: if isHead(); }
 
