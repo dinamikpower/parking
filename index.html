@@ -300,6 +300,11 @@
   body{height:100dvh;display:flex;flex-direction:column;padding-bottom:0}
   header{flex:none}
   #list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;max-width:none;margin:0;padding:12px max(14px,calc((100% - 760px)/2)) calc(120px + env(safe-area-inset-bottom))}
+  /* κάτω μπάρα 30px πιο χαμηλά (κρατά το safe-area του iPhone) */
+  .tabbar{height:calc(60px + max(6px, env(safe-area-inset-bottom) - 22px))}
+  .tabbar .tabs{padding-bottom:max(6px, calc(env(safe-area-inset-bottom) - 22px))}
+  .fab{bottom:calc(18px + max(6px, env(safe-area-inset-bottom) - 22px))}
+  #list{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
