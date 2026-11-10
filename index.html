@@ -445,7 +445,17 @@ if (LIVE) {
       return fs.onSnapshot(q, snap => cb(snap.docs.map(d => ({ id:d.id, ...d.data(), at:d.data().at?.toMillis?.() ?? Date.now() }))), () => {});
     },
     async request(r){ await fs.addDoc(fs.collection(db,'requests'), { ...r, at: fs.serverTimestamp(), doneAt:null }); },
-    async doneRequest(id){ await fs.updateDoc(fs.doc(db,'requests',id), { doneAt: Date.now(), doneBy: staff() }); },
+    // Μόνο ο πρώτος που θα πατήσει το αναλαμβάνει (transaction): ο δεύτερος παίρνει {ok:false, by}
+    async doneRequest(id){
+      return fs.runTransaction(db, async tx => {
+        const ref = fs.doc(db,'requests',id), snap = await tx.get(ref);
+        if (!snap.exists()) return { ok:false, gone:true };
+        const d = snap.data();
+        if (d.doneAt) return { ok:false, by:d.doneBy };
+        tx.update(ref, { doneAt: Date.now(), doneBy: staff() });
+        return { ok:true };
+      });
+    },
     async cancelRequest(id){ await fs.deleteDoc(fs.doc(db,'requests',id)); },
     // Χάρτες: πολλοί χάρτες. Το «main» κρατά τα παλιά έγγραφα (maps/main, maps/spots, maps/shapes)
     // και οι υπόλοιποι maps/<id>, maps/<id>_spots, maps/<id>_shapes. Η λίστα είναι στο maps/index.
@@ -484,7 +494,7 @@ if (LIVE) {
       const emit = () => cb(rd().sort((a,b)=>b.at-a.at)); reqSubs.add(emit); emit(); return () => reqSubs.delete(emit);
     },
     async request(r){ const a = JSON.parse(localStorage.getItem('parking-req-demo-v1')||'[]'); a.push({ ...r, id:crypto.randomUUID(), at:Date.now(), doneAt:null }); localStorage.setItem('parking-req-demo-v1', JSON.stringify(a)); reqSubs.forEach(f=>f()); },
-    async doneRequest(id){ const a = JSON.parse(localStorage.getItem('parking-req-demo-v1')||'[]').map(x=>x.id===id?{...x,doneAt:Date.now(),doneBy:staff()}:x); localStorage.setItem('parking-req-demo-v1', JSON.stringify(a)); reqSubs.forEach(f=>f()); },
+    async doneRequest(id){ const all = JSON.parse(localStorage.getItem('parking-req-demo-v1')||'[]'); const cur = all.find(x=>x.id===id); if (!cur) return { ok:false, gone:true }; if (cur.doneAt) return { ok:false, by:cur.doneBy }; const a = all.map(x=>x.id===id?{...x,doneAt:Date.now(),doneBy:staff()}:x); localStorage.setItem('parking-req-demo-v1', JSON.stringify(a)); reqSubs.forEach(f=>f()); return { ok:true }; },
     async cancelRequest(id){ const a = JSON.parse(localStorage.getItem('parking-req-demo-v1')||'[]').filter(x=>x.id!==id); localStorage.setItem('parking-req-demo-v1', JSON.stringify(a)); reqSubs.forEach(f=>f()); },
     subscribeMaps(cb){
       const emit=()=>{ let l=null; try{l=JSON.parse(localStorage.getItem('parking-maps-index'))}catch{} cb(l || [{ id:'main', name:'Χάρτης 1' }]); };
@@ -1252,7 +1262,14 @@ function drawReqs(){
 reqBar.onclick = async e => {
   const b = e.target.closest('[data-q]'); if (!b) return; const id = b.closest('.req').dataset.r, r = reqs.find(x => x.id === id); if (!r) return;
   try {
-    if (b.dataset.q === 'done'){ await store.doneRequest(id); toast('Ευχαριστώ — το έχεις αναλάβει'); }
+    if (b.dataset.q === 'done'){
+      if (b.disabled) return; b.disabled = true;
+      try {
+        const r = await store.doneRequest(id);
+        if (r && r.ok === false) toast(r.gone ? 'Το αίτημα δεν υπάρχει πια' : `Το πήρε ήδη ${r.by || 'κάποιος άλλος'}`);
+        else toast('Ευχαριστώ — το έχεις αναλάβει');
+      } catch (e) { b.disabled = false; toast('Σφάλμα: ' + e.message); }
+    }
     else if (b.dataset.q === 'cancel') await store.cancelRequest(id);
     else if (b.dataset.q === 'hide'){ reqHide.add(id); saveHide(); drawReqs(); }
     else focusCar(r.vehicleId);
