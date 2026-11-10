@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#1C2223">
 <script>document.documentElement.dataset.theme=localStorage.getItem('parking-theme')||'dark'</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -146,11 +146,11 @@
     --in-bg:#e4e4e4; --in-fg:#111; --out-bg:#ebebeb; --out-fg:#6b6b6b; --strip:#111; --chip:#fff; --inp:#f6f6f6;
     --bt-bg:#e8e8e8; --bt-fg:#222; --bt-bd:#cfcfcf; --rd-bg:#efefef; --rd-fg:#333; --rd-bd:#cfcfcf;
     --shadow:0 1px 2px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.06); --open-shadow:0 6px 20px rgba(0,0,0,.14); color-scheme:light }
-  html[data-theme=dark]{ --bg:#0d0d0d; --card:#171717; --text:#f2f2f2; --muted:#9a9a9a; --line:#2a2a2a; --accent:#6e6e6e; --accent-d:#5a5a5a;
-    --surf:#0d0d0d; --field:#1c1c1c; --field-f:#232323; --seg:#151515; --seg-on:#2c2c2c; --seg-fg:#fff; --badge:#1c1c1c; --badge-fg:#b0b0b0; --edge:#363636;
-    --in-bg:#262626; --in-fg:#f2f2f2; --out-bg:#1c1c1c; --out-fg:#9a9a9a; --strip:#000; --chip:#1c1c1c; --inp:#1c1c1c;
-    --bt-bg:#232323; --bt-fg:#e0e0e0; --bt-bd:#3a3a3a; --rd-bg:#222; --rd-fg:#ddd; --rd-bd:#3a3a3a;
-    --shadow:none; --open-shadow:0 8px 24px rgba(0,0,0,.5); color-scheme:dark }
+  html[data-theme=dark]{ --bg:#1C2223; --card:#252D2E; --text:#E8ECE6; --muted:#939D9E; --line:#343D3E; --accent:#B29F82; --accent-d:#9c8a6f;
+    --surf:#1C2223; --field:#2B3435; --field-f:#313B3C; --seg:#202829; --seg-on:#313B3C; --seg-fg:#fff; --badge:#2B3435; --badge-fg:#B9C2C3; --edge:#434E4F;
+    --in-bg:#2F3B3A; --in-fg:#E8ECE6; --out-bg:#2B3435; --out-fg:#939D9E; --strip:#141819; --chip:#2B3435; --inp:#2B3435;
+    --bt-bg:#2F3839; --bt-fg:#E8ECE6; --bt-bd:#434E4F; --rd-bg:#2F3839; --rd-fg:#DDE3E3; --rd-bd:#434E4F;
+    --shadow:none; --open-shadow:0 8px 24px rgba(0,0,0,.45); color-scheme:dark }
   body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--strip);z-index:60}
   header{background:var(--surf);color:var(--text);border-radius:0;padding:calc(env(safe-area-inset-top) + 32px) 14px 12px;box-shadow:0 1px 0 var(--line)}
   h1{color:var(--text);font-size:19px}
@@ -278,6 +278,12 @@
   .card:not(.open) .tag.in{display:none}
   .card:not(.open) .loc .lb{font-size:16px}
   .card:not(.open) .loc .lp{display:none}
+  html[data-theme=dark] .btn.primary,html[data-theme=dark] .fab,html[data-theme=dark] .bchips .chip.on{color:#14191A}
+  html[data-theme=dark] .fab{box-shadow:0 8px 20px rgba(0,0,0,.45)}
+  html[data-theme=dark] .tabbar .tab.on{color:var(--accent)}
+  html[data-theme=dark] .tabbar .tab.on::after{background:var(--accent)}
+  html[data-theme=dark] .cam{color:#14191A}
+  html[data-theme=dark] .cam .ic{stroke:#14191A}
 </style>
 </head>
 <body>
@@ -501,7 +507,7 @@ const CAN = !ME || ME.head;   // false = υπάλληλος: μόνο προβο
 // Θέμα: σκούρο (προεπιλογή) ή φωτεινό
 const ICON_SUN = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/></svg>';
-const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').innerHTML = t === 'dark' ? ICON_SUN : ICON_MOON; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#0d0d0d' : '#ffffff'); };
+const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').innerHTML = t === 'dark' ? ICON_SUN : ICON_MOON; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#1C2223' : '#ffffff'); };
 applyTheme(document.documentElement.dataset.theme || 'dark');
 // Η κεφαλίδα και οι καρτέλες μένουν σταθερές πάνω όταν γίνεται scroll
 const setHH = () => document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px');
