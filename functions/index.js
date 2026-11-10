@@ -4,7 +4,7 @@ const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const admin = require('firebase-admin');
 admin.initializeApp();
 
-exports.notifyRequest = onDocumentCreated({ document: 'requests/{id}', region: 'us-central1' }, async event => {
+exports.notifyRequest = onDocumentCreated({ document: 'requests/{id}', region: 'europe-west1' }, async event => {
   const r = event.data && event.data.data();
   if (!r) return;
   const snap = await admin.firestore().collection('pushTokens').where('head', '==', false).get();
