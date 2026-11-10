@@ -116,7 +116,7 @@ export async function requireLogin(app, db, fs, CFG, onReady){
         <div class="row"><button class="p" type="submit">+ Προσθήκη</button></div><div class="m"></div></form>` : ''}
       <div class="row"><button data-a="pw">Αλλαγή κωδικού (email)</button><button data-a="out" class="d">Αποσύνδεση</button></div><div class="row"><button data-a="x">Κλείσιμο</button></div><div class="m" id="um"></div></div>`;
     ud.querySelector('[data-a=x]').onclick = () => ud.close();
-    ud.querySelector('[data-a=out]').onclick = async () => { if (confirm('Αποσύνδεση;')) { await A.signOut(auth); location.reload(); } };
+    ud.querySelector('[data-a=out]').onclick = async () => { await A.signOut(auth); location.reload(); };
     ud.querySelector('[data-a=pw]').onclick = async () => { const m = ud.querySelector('#um'); try { await A.sendPasswordResetEmail(auth, me.email); m.textContent = 'Στάλθηκε email για νέο κωδικό.'; } catch (e) { m.textContent = msg(e); } };
     if (me.admin) loadStaff();
   }
