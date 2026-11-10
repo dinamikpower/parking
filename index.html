@@ -1200,7 +1200,7 @@ function beep(){ try { const A = window.AudioContext || window.webkitAudioContex
 function focusCar(id){ $('#q').value = ''; tab = 'active'; zoneF = ''; lastK = ''; openId = id; render(); setTimeout(() => document.querySelector(`.card[data-id="${id}"]`)?.scrollIntoView({ block:'center', behavior:'smooth' }), 60); }
 const reqHide = new Set(), TAKEN_MS = 3*60*1000;
 function drawReqs(){
-  const act = reqs.filter(r => !r.doneAt && Date.now() - r.at < REQ_TTL);
+  const act = CAN ? [] : reqs.filter(r => !r.doneAt && Date.now() - r.at < REQ_TTL);
   const taken = reqs.filter(r => r.doneAt && Date.now() - r.doneAt < TAKEN_MS && !reqHide.has(r.id));
   reqBar.innerHTML = taken.map(r => `<div class="req taken" data-r="${r.id}"><div class="rt">✓ ΑΝΑΛΗΦΘΗΚΕ</div>
     <div class="rm"><span class="plate" data-c="${esc(r.country||'')}">${esc(r.plate)}</span><span class="rl">${esc(r.doneBy||'Κάποιος')} το παίρνει</span></div>
