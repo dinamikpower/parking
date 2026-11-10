@@ -1201,10 +1201,11 @@ let reqs = [], reqFirst = true; const reqSeen = new Set();
 const reqBar = document.createElement('div'); reqBar.id = 'reqBar'; document.body.append(reqBar);
 function beep(){ try { const A = window.AudioContext || window.webkitAudioContext, c = new A(); [0, .22].forEach(t => { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = 880; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(.25, c.currentTime + t); g.gain.exponentialRampToValueAtTime(.001, c.currentTime + t + .18); o.start(c.currentTime + t); o.stop(c.currentTime + t + .2); }); } catch {} }
 function focusCar(id){ $('#q').value = ''; tab = 'active'; zoneF = ''; lastK = ''; openId = id; render(); setTimeout(() => document.querySelector(`.card[data-id="${id}"]`)?.scrollIntoView({ block:'center', behavior:'smooth' }), 60); }
-const reqHide = new Set(), TAKEN_MS = 3*60*1000;
+const reqHide = new Set((()=>{ try { return JSON.parse(localStorage.getItem('parking-req-hide')||'[]'); } catch { return []; } })()), TAKEN_MS = 3*60*1000;
+const saveHide = () => { try { localStorage.setItem('parking-req-hide', JSON.stringify([...reqHide].slice(-60))); } catch {} };
 function drawReqs(){
   const act = CAN ? [] : reqs.filter(r => !r.doneAt && Date.now() - r.at < REQ_TTL && !reqHide.has(r.id));
-  const taken = reqs.filter(r => r.doneAt && Date.now() - r.doneAt < TAKEN_MS && !reqHide.has(r.id));
+  const taken = reqs.filter(r => r.doneAt && Date.now() - r.doneAt < TAKEN_MS && !reqHide.has(r.id) && r.doneBy !== staff());
   reqBar.innerHTML = taken.map(r => `<div class="req taken" data-r="${r.id}"><button class="rx" data-q="hide" aria-label="Κλείσιμο">✕</button><div class="rt">✓ ΑΝΑΛΗΦΘΗΚΕ</div>
     <div class="rm"><span class="plate" data-c="${esc(r.country||'')}">${esc(r.plate)}</span><span class="rl">${esc(r.doneBy||'Κάποιος')} το παίρνει</span></div>
     <div class="ra"><button data-q="hide">Εντάξει</button></div></div>`).join('') + act.map(r => `<div class="req" data-r="${r.id}"><button class="rx" data-q="hide" aria-label="Κλείσιμο">✕</button><div class="rt">🔔 ΖΗΤΕΙΤΑΙ ΤΟ ΟΧΗΜΑ · από ${esc(r.by||'επικεφαλής')}</div>
@@ -1216,7 +1217,7 @@ reqBar.onclick = async e => {
   try {
     if (b.dataset.q === 'done'){ await store.doneRequest(id); toast('Ευχαριστώ — το έχεις αναλάβει'); }
     else if (b.dataset.q === 'cancel') await store.cancelRequest(id);
-    else if (b.dataset.q === 'hide'){ reqHide.add(id); drawReqs(); }
+    else if (b.dataset.q === 'hide'){ reqHide.add(id); saveHide(); drawReqs(); }
     else focusCar(r.vehicleId);
   } catch (err) { toast('Σφάλμα: ' + err.message); }
 };
@@ -1251,9 +1252,9 @@ async function pushRegister(){
     return;
   }
   if (Notification.permission === 'granted'){ pushRegister().catch(() => {}); return; }
-  if (Notification.permission === 'denied') return;
+  if (Notification.permission === 'denied' || localStorage.getItem('push-no')) return;
   bar.style.display = 'flex'; bar.innerHTML = '<span style="flex:1">🔔 Θέλεις ειδοποίηση όταν ζητείται όχημα, ακόμα και με κλειστό αππ;</span><button class="btn primary">Ναι</button><button class="btn" data-x>Όχι</button>';
-  bar.querySelector('[data-x]').onclick = () => bar.remove();
+  bar.querySelector('[data-x]').onclick = () => { localStorage.setItem('push-no','1'); bar.remove(); };
   bar.querySelector('.primary').onclick = async () => {
     try { const p = await Notification.requestPermission(); if (p === 'granted'){ await pushRegister(); toast('Οι ειδοποιήσεις ενεργοποιήθηκαν'); } } catch (e) { toast('Σφάλμα: ' + e.message); }
     bar.remove();
