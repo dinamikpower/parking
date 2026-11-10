@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
-<meta name="theme-color" content="#0d0d0d">
-<script>document.documentElement.dataset.theme=localStorage.getItem('parking-theme')||'dark'</script>
+<meta name="theme-color" content="#ffffff">
+<script>document.documentElement.dataset.theme=localStorage.getItem('parking-theme2')||'light'</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Παρκινγκ">
@@ -141,11 +141,11 @@
   .toast{background:#222;border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:11px 18px}
 
   /* ===== Θέματα: σκούρο (προεπιλογή) και φωτεινό — μινιμαλ ===== */
-  :root,html[data-theme=light]{ --bg:#f2f2f2; --card:#fff; --text:#111; --muted:#6b6b6b; --line:#e0e0e0; --accent:#222; --accent-d:#000;
-    --surf:#fff; --field:#ebebeb; --field-f:#fff; --seg:#e6e6e6; --seg-on:#fff; --seg-fg:#111; --badge:#ebebeb; --badge-fg:#555; --edge:#cfcfcf;
-    --in-bg:#e4e4e4; --in-fg:#111; --out-bg:#ebebeb; --out-fg:#6b6b6b; --strip:#111; --chip:#fff; --inp:#f6f6f6;
-    --bt-bg:#e8e8e8; --bt-fg:#222; --bt-bd:#cfcfcf; --rd-bg:#efefef; --rd-fg:#333; --rd-bd:#cfcfcf;
-    --shadow:0 1px 2px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.06); --open-shadow:0 6px 20px rgba(0,0,0,.14); color-scheme:light }
+  :root,html[data-theme=light]{ --bg:#f3f6fb; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0; --accent:#2563eb; --accent-d:#1d4ed8;
+    --surf:#fff; --field:#eef2f7; --field-f:#fff; --seg:#e8edf4; --seg-on:#fff; --seg-fg:#0f172a; --badge:#eaf0f9; --badge-fg:#475569; --edge:#cbd5e1;
+    --in-bg:#dcfce7; --in-fg:#166534; --out-bg:#eef2f7; --out-fg:#64748b; --strip:#fff; --chip:#fff; --inp:#f8fafc;
+    --bt-bg:#eef2f7; --bt-fg:#1e293b; --bt-bd:#d5deea; --rd-bg:#eef2f7; --rd-fg:#334155; --rd-bd:#d5deea;
+    --shadow:0 1px 2px rgba(15,23,42,.05),0 4px 14px rgba(15,23,42,.06); --open-shadow:0 8px 26px rgba(15,23,42,.14); color-scheme:light }
   html[data-theme=dark]{ --bg:#0d0d0d; --card:#171717; --text:#f2f2f2; --muted:#9a9a9a; --line:#2a2a2a; --accent:#6e6e6e; --accent-d:#5a5a5a;
     --surf:#0d0d0d; --field:#1c1c1c; --field-f:#232323; --seg:#151515; --seg-on:#2c2c2c; --seg-fg:#fff; --badge:#1c1c1c; --badge-fg:#b0b0b0; --edge:#363636;
     --in-bg:#262626; --in-fg:#f2f2f2; --out-bg:#1c1c1c; --out-fg:#9a9a9a; --strip:#000; --chip:#1c1c1c; --inp:#1c1c1c;
@@ -278,6 +278,11 @@
   .card:not(.open) .tag.in{display:none}
   .card:not(.open) .loc .lb{font-size:16px}
   .card:not(.open) .loc .lp{display:none}
+  html[data-theme=light] .card{border:1px solid var(--line);box-shadow:var(--shadow)}
+  html[data-theme=light] .tabbar .tab.on{color:var(--accent)}
+  html[data-theme=light] .tabbar .tab.on::after{background:var(--accent)}
+  html[data-theme=light] .fab{box-shadow:0 8px 20px rgba(37,99,235,.4)}
+  html[data-theme=light] .chip.on,html[data-theme=light] .zf.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -502,11 +507,11 @@ const CAN = !ME || ME.head;   // false = υπάλληλος: μόνο προβο
 const ICON_SUN = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/></svg>';
 const applyTheme = t => { document.documentElement.dataset.theme = t; $('#themeBtn').innerHTML = t === 'dark' ? ICON_SUN : ICON_MOON; document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'dark' ? '#0d0d0d' : '#ffffff'); };
-applyTheme(document.documentElement.dataset.theme || 'dark');
+applyTheme(document.documentElement.dataset.theme || 'light');
 // Η κεφαλίδα και οι καρτέλες μένουν σταθερές πάνω όταν γίνεται scroll
 const setHH = () => document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px');
 setHH(); new ResizeObserver(setHH).observe(document.querySelector('header')); window.addEventListener('resize', setHH);
-$('#themeBtn').onclick = () => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('parking-theme', t); } catch {} applyTheme(t); };
+$('#themeBtn').onclick = () => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('parking-theme2', t); } catch {} applyTheme(t); };
 document.body.classList.toggle('ro', !CAN);
 const staff = () => ME ? ME.name : (localStorage.getItem('parking-staff') || '');
 function ensureStaff(){
