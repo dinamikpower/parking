@@ -1000,7 +1000,7 @@ function stopScan(){
   scanning = false; $('#scanTools').hidden = true;
   if (torchOn && track){ try { track.applyConstraints({ advanced:[{ torch:false }] }); } catch {} torchOn = false; }
   // η κάμερα μένει «ζεστή» για 2 λεπτά ώστε να μη ζητάει ξανά άδεια σε κάθε σάρωση
-  clearTimeout(keepTimer); keepTimer = setTimeout(releaseStream, 120000);
+  clearTimeout(keepTimer); keepTimer = setTimeout(releaseStream, 1200000);
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden && !scanning) releaseStream(); });
 /* Πρόταση χρώματος οχήματος από το κάδρο: δείγματα γύρω/πάνω από την πινακίδα, ταξινόμηση στα χρώματα της φόρμας */
