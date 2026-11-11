@@ -13,6 +13,14 @@
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Παρκινγκ</title>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js">
+<link rel="modulepreload" href="./map.js?v=36">
+<link rel="modulepreload" href="./auth.js?v=10">
+<link rel="modulepreload" href="./live.js?v=7">
+
 <style>
   :root{
     --bg:#f1f5f9; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
@@ -316,7 +324,7 @@
 <body>
 <div id="splash"><img src="icon-192.png" alt="" width="112" height="112"><div>Παρκινγκ</div></div>
 <style>#splash{position:fixed;inset:0;z-index:99999;background:#1C2223;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .45s ease}#splash img{border-radius:26px;animation:spl 1s ease-out both}#splash div{color:#B29F82;font:600 22px/1 -apple-system,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;animation:spl 1s .12s ease-out both}#splash.out{opacity:0;pointer-events:none}@keyframes spl{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}</style>
-<script>(function(){var t0=Date.now(),el=document.getElementById('splash');function go(){var w=Math.max(0,1100-(Date.now()-t0));setTimeout(function(){el.classList.add('out');setTimeout(function(){el.remove()},500)},w)}if(document.readyState==='complete')go();else addEventListener('load',go);setTimeout(function(){el.parentNode&&go()},5000)})()</script>
+<script>(function(){var t0=Date.now(),el=document.getElementById('splash');function go(){var w=Math.max(0,800-(Date.now()-t0));setTimeout(function(){el.classList.add('out');setTimeout(function(){el.remove()},500)},w)}if(document.readyState==='complete')go();else addEventListener('load',go);setTimeout(function(){el.parentNode&&go()},5000)})()</script>
 
 <header>
   <div class="top">
@@ -406,6 +414,10 @@
    ============================================================ */
 import { initMap } from './map.js?v=36';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
+// Ξεκινούν όλα μαζί (παράλληλα) αντί το ένα μετά το άλλο
+const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
+const pApp = import(FB + 'firebase-app.js'), pFs = import(FB + 'firebase-firestore.js'), pAuth = import('./auth.js?v=10');
+[pApp, pFs, pAuth].forEach(p => p.catch(() => {}));
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
 const LIVE = !!(CFG && CFG.apiKey && !String(CFG.apiKey).startsWith('YOUR'));
@@ -425,11 +437,11 @@ window.__plateKey = plateKey;
 const mapDocNames = id => id==='main' ? { img:'main', spots:'spots', shapes:'shapes' } : { img:id, spots:id+'_spots', shapes:id+'_shapes' };
 let store, ME = null;      // ME: ο συνδεδεμένος υπάλληλος (μόνο σε live λειτουργία)
 if (LIVE) {
-  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
-  const fs = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
+  const { initializeApp } = await pApp;
+  const fs = await pFs;
   const app = initializeApp(CFG);
   const db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) });
-  ({ requireLogin: window.__rl } = await import('./auth.js?v=10'));
+  ({ requireLogin: window.__rl } = await pAuth);
   ME = await window.__rl(app, db, fs, CFG);
   window.__fb = { app, db, fs };           // δεν προχωράει η εφαρμογή αν δεν γίνει είσοδος
   const col = fs.collection(db, 'vehicles');
