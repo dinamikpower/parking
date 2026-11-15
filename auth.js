@@ -25,9 +25,12 @@ const CSS = `
 #lg button.link{background:none;box-shadow:none;color:#888;font-size:14px;font-weight:600;margin-top:10px;padding:8px}
 #lg button:disabled{opacity:.6}
 #lg .err{color:#b91c1c;font-size:14px;min-height:20px;margin-top:10px} #lg .ok{color:#166534}
-#ud{border:0;border-radius:16px;padding:0;width:min(520px,94vw);background:var(--card,#fff);color:var(--text,#0f172a)}
+#ud{border:0;padding:0;width:min(520px,100vw);max-width:100vw;background:var(--card,#fff);color:var(--text,#0f172a);
+  position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;border-radius:22px 22px 0 0;max-height:calc(100dvh - 12px);overflow-y:auto;overscroll-behavior:contain;
+  box-shadow:0 -10px 40px rgba(0,0,0,.5);animation:sheetUp .3s cubic-bezier(.2,.85,.25,1)}
 #ud::backdrop{background:rgba(0,0,0,.55)}
 #ud .in{padding:18px} #ud h2{margin:0 0 4px;font-size:19px} #ud .sub{color:#64748b;font-size:14px;margin-bottom:12px}
+#ud .in{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
 #ud .st{display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line,#e2e8f0)}
 #ud .st b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} #ud .st small{color:#64748b;display:block;font-weight:400;overflow:hidden;text-overflow:ellipsis}
 #ud button{font:inherit;cursor:pointer;padding:9px 12px;border-radius:10px;border:1px solid var(--bt-bd,#cfcfcf);background:var(--bt-bg,#e8e8e8);color:var(--bt-fg,#222);font-weight:600}
