@@ -210,8 +210,8 @@ const TILE_ATTR = 'Esri, Maxar, Earthstar Geographics, GIS User Community';
 function loadLeaflet(){
   if (window.L) return Promise.resolve(window.L);
   return new Promise((ok, bad) => {
-    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.append(css);
-    const sc = document.createElement('script'); sc.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = './vendor/leaflet/leaflet.css'; document.head.append(css);
+    const sc = document.createElement('script'); sc.src = './vendor/leaflet/leaflet.js';
     sc.onload = () => ok(window.L); sc.onerror = () => bad(new Error('Δεν φορτώθηκε ο χάρτης (έλεγξε τη σύνδεση)'));
     document.head.append(sc);
   });
