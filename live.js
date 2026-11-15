@@ -21,6 +21,8 @@ const CSS = `
 .lv-btns{display:flex;flex-direction:column;gap:8px}
 .lv-btns button{width:44px;height:44px;border-radius:12px;border:0;background:#fff;color:#111;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .lv-btns button.on{background:#888;color:#fff}
+.lv-btns .lv-loc{color:#007aff;display:flex;align-items:center;justify-content:center}
+#mapDlg:not(.editing) .lv-btns [data-b=set]{display:none}
 .mp-live .leaflet-control-attribution{font-size:10px;border-radius:8px 0 0 0}
 .mp-live .leaflet-bar{border:0!important;border-radius:14px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 .mp-live .leaflet-bar a{width:42px;height:42px;line-height:42px;font-size:19px;border-bottom:1px solid #e2e8f0}
@@ -60,11 +62,11 @@ export async function createLive(host, h){
   /* ---- κουμπιά πάνω στον χάρτη ---- */
   const Ctl = L.Control.extend({ onAdd(){
     const d = L.DomUtil.create('div', 'lv-btns');
-    d.innerHTML = '<button data-b="me" aria-label="Η θέση μου">🎯</button><button data-b="find" aria-label="Αναζήτηση">🔎</button><button data-b="in" aria-label="Zoom +">＋</button><button data-b="out" aria-label="Zoom −">－</button>';
+    d.innerHTML = '<button data-b="me" class="lv-loc" aria-label="Η θέση μου"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M21 3 3 10.5l7.2 2.3 2.3 7.2z" fill="currentColor"/></svg></button><button data-b="find" aria-label="Αναζήτηση">🔎</button><button data-b="set" aria-label="Ρυθμίσεις">⚙</button><button data-b="in" aria-label="Zoom +">＋</button><button data-b="out" aria-label="Zoom −">－</button>';
     L.DomEvent.disableClickPropagation(d);
     d.addEventListener('click', e => {
       const b = e.target.closest('[data-b]')?.dataset.b;
-      if (b==='me') api.centerOnMe(); else if (b==='find') h.onSearch?.(); else if (b==='in') map.zoomIn(); else if (b==='out') map.zoomOut();
+      if (b==='me') api.centerOnMe(); else if (b==='find') h.onSearch?.(); else if (b==='set') h.onSettings?.(); else if (b==='in') map.zoomIn(); else if (b==='out') map.zoomOut();
     });
     return d;
   } });
