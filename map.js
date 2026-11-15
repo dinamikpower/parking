@@ -67,7 +67,7 @@ const CSS = `
 .mp-sheet .m{color:var(--muted);font-size:14px;margin-top:6px}
 .mp-foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mp-foot{transition:opacity .12s}
-#mapDlg.editing .mp-foot{min-height:136px;align-content:flex-start}
+#mapDlg.editing .mp-foot{align-content:flex-start}
 .mp-ask{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding-top:18vh}
 .mp-ask form{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;width:min(92vw,380px);display:flex;flex-direction:column;gap:12px}
 .mp-ask .t{font-size:15px;color:var(--muted)}
@@ -111,6 +111,7 @@ const CSS = `
 .geo-head small{flex:1 1 100%;color:#94a3b8;font-size:12px}
 .geo-head input{flex:1;min-width:0;font-size:16px;padding:10px;border-radius:10px;border:0}
 .geo-head button{padding:10px 12px;border-radius:10px;border:0;background:#334155;color:#fff;font-size:15px;font-weight:600}
+.geo-head .geo-loc{flex:0 0 auto;width:38px;height:38px;padding:0;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.35)}
 .geo-map{flex:1;min-height:0;background:#222}
 .geo-foot{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
 .geo-foot .btn{flex:1}
@@ -225,7 +226,7 @@ async function pickFromMap(toast){
   return new Promise(res => {
     const d = document.createElement('dialog'); d.id = 'geoDlg';
     d.innerHTML = `<div class="geo-head"><b>Διάλεξε την περιοχή του παρκινγκ</b>
-        <input class="geo-q" type="search" placeholder="Διεύθυνση ή περιοχή (π.χ. Πατησίων 10, Αθήνα)" enterkeyhint="search"><button data-g="search">🔍</button><button data-g="loc" aria-label="Η τοποθεσία μου">📍</button>
+        <input class="geo-q" type="search" placeholder="Διεύθυνση ή περιοχή (π.χ. Πατησίων 10, Αθήνα)" enterkeyhint="search"><button data-g="search">🔍</button><button class="geo-loc" data-g="loc" aria-label="Η τοποθεσία μου" type="button"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3.2M12 18.3v3.2M2.5 12h3.2M18.3 12h3.2"/></svg></button>
         <small>Μετακίνησε και κάνε zoom ώστε να φαίνεται όλο το παρκινγκ. Ό,τι βλέπεις στην οθόνη γίνεται η εικόνα του χάρτη.</small></div>
       <div class="geo-map"></div>
       <div class="geo-foot"><button class="btn" data-g="cancel">Άκυρο</button><button class="btn primary" data-g="shot">📸 Λήψη εικόνας</button></div>`;
@@ -883,9 +884,8 @@ export function initMap(ctx){
         foot.innerHTML = `<div class="hint">${msg}</div>${pend?.k==='poly' ? '<button class="btn primary" data-a="pclose">⬠ Κλείσιμο περιοχής</button><button class="btn" data-a="pline">〰 Γραμμή</button>' : ''}${pend ? '<button class="btn" data-a="pundo">↶ Πίσω</button>' : ''}<button class="btn" data-a="pcancel">✕ Ακύρωση</button>`;
         return;
       }
-      foot.innerHTML = `<div class="hint">Πράσινο: ελεύθερη · Κόκκινο: κατειλημμένη · Κράτα πατημένο σε σημείο: θέση ή σχέδιο · Κράτα πατημένη μια θέση για να τη μετακινήσεις</div>
-        <button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="fmore">⚙ ${fmore ? 'Λιγότερα' : 'Ρυθμίσεις'}</button>
-        ${fmore ? `<div class="mp-more"><button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>${isLive() ? '' : '<button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button>'}<button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
+      foot.innerHTML = `<button class="btn" data-a="fmore">⚙ ${fmore ? 'Λιγότερα' : 'Ρυθμίσεις'}</button>
+        ${fmore ? `<div class="mp-more"><button class="btn" data-a="undo">↶ Αναίρεση</button><button class="btn" data-a="newzone">＋ Νέα ζώνη/σειρά</button>${isLive() ? '' : '<button class="btn" data-a="img">🖼 Εικόνα</button><button class="btn" data-a="geoimg">🌍 Από χάρτη</button><button class="btn" data-a="cropimg">✂️ Περικοπή</button>'}<button class="btn" data-a="renamemap">✏️ Όνομα χάρτη</button><button class="btn" data-a="clearmap">🗑 Διαγραφή χάρτη</button>
         <label>Μέγεθος θέσεων <input class="mp-size" type="range" min="1" max="8" step="0.1" value="${doc.size}"></label>
         ${`<label>Μέγεθος ονομάτων <input class="mp-lsize" type="range" min="0.8" max="8" step="0.1" value="${doc.lsize||2.4}"></label>`}</div>` : ''}`;
     } else if (mode==='pick'){
