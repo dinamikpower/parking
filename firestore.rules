@@ -4,7 +4,8 @@ service cloud.firestore {
     // Πρόσβαση έχουν μόνο όσοι έχουν έγγραφο staff/{uid} (τους προσθέτει ο διαχειριστής μέσα από την εφαρμογή).
     function signedIn() { return request.auth != null; }
     function isStaff()  { return signedIn() && exists(/databases/$(database)/documents/staff/$(request.auth.uid)); }
-    function isAdmin()  { return isStaff() && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.admin == true; }
+    // κάθε επικεφαλής είναι και διαχειριστής (μπορεί να προσθέτει/αφαιρεί προσωπικό)
+    function isAdmin()  { return isStaff() && (get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.admin == true || get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.get('role', '') == 'head'); }
     // επικεφαλής = διαχειριστής ή staff με role == 'head' (μόνο αυτοί γράφουν οχήματα/χάρτες)
     function isHead()   { return isStaff() && (get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.admin == true || get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.get('role', '') == 'head'); }
     function noInit()   { return !exists(/databases/$(database)/documents/meta/init); }

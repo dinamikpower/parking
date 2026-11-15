@@ -109,7 +109,7 @@ export async function requireLogin(app, db, fs, CFG, onReady){
 
   function renderUd(list){
     ud.innerHTML = `<div class="in"><h2>👤 ${esc(me.name)}</h2><div class="sub">${esc(me.email)}${me.admin ? ' · διαχειριστής' : me.head ? ' · επικεφαλής' : ' · υπάλληλος'}</div>
-      ${me.admin ? `<div id="stl"><div class="sub">Φόρτωση προσωπικού…</div></div>
+      ${me.head ? `<div id="stl"><div class="sub">Φόρτωση προσωπικού…</div></div>
         <form id="stf"><b>Νέο μέλος προσωπικού</b><input name="name" placeholder="Όνομα" required><input name="email" type="email" placeholder="Email" autocapitalize="off" required>
         <input name="pw" type="text" placeholder="Προσωρινός κωδικός (min 6)" minlength="6" required autocapitalize="off" autocomplete="off">
         <select name="role"><option value="staff">Υπάλληλος (μόνο προβολή)</option><option value="head">Επικεφαλής (καταχωρεί οχήματα)</option></select>
@@ -118,7 +118,7 @@ export async function requireLogin(app, db, fs, CFG, onReady){
     ud.querySelector('[data-a=x]').onclick = () => ud.close();
     ud.querySelector('[data-a=out]').onclick = async () => { await A.signOut(auth); location.reload(); };
     ud.querySelector('[data-a=pw]').onclick = async () => { const m = ud.querySelector('#um'); try { await A.sendPasswordResetEmail(auth, me.email); m.textContent = 'Στάλθηκε email για νέο κωδικό.'; } catch (e) { m.textContent = msg(e); } };
-    if (me.admin) loadStaff();
+    if (me.head) loadStaff();
   }
 
 
