@@ -18,7 +18,7 @@
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js">
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js">
 <link rel="modulepreload" href="./map.js?v=36">
-<link rel="modulepreload" href="./auth.js?v=11">
+<link rel="modulepreload" href="./auth.js?v=12">
 <link rel="modulepreload" href="./live.js?v=7">
 
 <style>
@@ -421,11 +421,11 @@
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=37';
+import { initMap } from './map.js?v=38';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 // Ξεκινούν όλα μαζί (παράλληλα) αντί το ένα μετά το άλλο
 const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
-const pApp = import(FB + 'firebase-app.js'), pFs = import(FB + 'firebase-firestore.js'), pAuth = import('./auth.js?v=11');
+const pApp = import(FB + 'firebase-app.js'), pFs = import(FB + 'firebase-firestore.js'), pAuth = import('./auth.js?v=12');
 [pApp, pFs, pAuth].forEach(p => p.catch(() => {}));
 let CFG = null;
 try { CFG = (await import('./firebase-config.js')).default; } catch (e) { CFG = null; }
@@ -715,7 +715,8 @@ function openForm(v, prefillPlate){
   $('#phoneW').style.display = CAN ? '' : 'none';
   $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = CAN ? (v?.phone || '') : ''; $('#fNote').value = v?.note || '';
   if (v?.__again) editing = null;
-  checkDup(); renderChips(); prefillFromHistory(); dlg.showModal();   // δεν εστιάζει αυτόματα πεδίο — το πληκτρολόγιο ανοίγει μόνο όταν πατήσει κάπου ο χρήστης
+  checkDup(); renderChips(); prefillFromHistory(); dlg.showModal();
+  document.activeElement?.blur?.();   // το πληκτρολόγιο ανοίγει μόνο όταν πατήσει κάπου ο χρήστης, όχι αυτόματα
 }
 function checkDup(){
   const k = plateKey($('#fPlate').value);

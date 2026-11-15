@@ -190,7 +190,7 @@ function cropDialog(url){
       paint();
     });
     const end = () => { drag = null; }; rc.addEventListener('pointerup', end); rc.addEventListener('pointercancel', end);
-    d.showModal();
+    d.showModal(); document.activeElement?.blur?.();
   });
 }
 // Κόβει μια εικόνα (Blob ή data URL) στο πλαίσιο r και επιστρέφει canvas
@@ -255,7 +255,7 @@ async function pickFromMap(toast){
         catch(err){ btn.disabled = false; btn.textContent = '📸 Λήψη εικόνας'; toast(err.message || 'Η λήψη απέτυχε'); }
       }
     });
-    d.showModal(); setTimeout(() => map.invalidateSize(), 50);
+    d.showModal(); document.activeElement?.blur?.(); setTimeout(() => map.invalidateSize(), 50);
   });
 }
 // Ράβει τα πλακίδια της τρέχουσας προβολής σε ένα canvas (σε διπλάσια ανάλυση όταν γίνεται)
@@ -974,7 +974,7 @@ export function initMap(ctx){
     const switched = target && target!==curId;
     if (switched) useMap(target);
     doc = cloneRemote();
-    sheet.hidden = true; if (!dlg.open) dlg.showModal();
+    sheet.hidden = true; if (!dlg.open){ dlg.showModal(); document.activeElement?.blur?.(); }
     render();
     const settle = async () => {
       if (isLive()){

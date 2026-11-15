@@ -108,7 +108,7 @@ export async function requireLogin(app, db, fs, CFG, onReady){
   const ud = document.createElement('dialog'); ud.id = 'ud'; document.body.append(ud);
   const btn = document.createElement('button'); btn.id = 'userBtn'; btn.textContent = '👤 ' + me.name; btn.title = me.email;
   const slot = document.getElementById('count')?.parentElement; slot?.prepend(btn);
-  btn.onclick = () => { renderUd(); ud.showModal(); };
+  btn.onclick = () => { renderUd(); ud.showModal(); document.activeElement?.blur?.(); };
 
   function renderUd(list){
     ud.innerHTML = `<div class="in"><h2>👤 ${esc(me.name)}</h2><div class="sub">${esc(me.email)}${me.admin ? ' · διαχειριστής' : me.head ? ' · επικεφαλής' : ' · υπάλληλος'}</div>
