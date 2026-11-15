@@ -715,8 +715,7 @@ function openForm(v, prefillPlate){
   $('#phoneW').style.display = CAN ? '' : 'none';
   $('#fKey').value = v?.keyNo || ''; $('#fPhone').value = CAN ? (v?.phone || '') : ''; $('#fNote').value = v?.note || '';
   if (v?.__again) editing = null;
-  checkDup(); renderChips(); prefillFromHistory(); dlg.showModal();
-  setTimeout(()=>(!v?.__park && CAN && !editing && $('#fPlate').value ? $('#fPhone') : ($('#fPlate').value ? $('#fLoc') : $('#fPlate'))).focus(), 50);
+  checkDup(); renderChips(); prefillFromHistory(); dlg.showModal();   // δεν εστιάζει αυτόματα πεδίο — το πληκτρολόγιο ανοίγει μόνο όταν πατήσει κάπου ο χρήστης
 }
 function checkDup(){
   const k = plateKey($('#fPlate').value);
