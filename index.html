@@ -685,12 +685,14 @@ function render(){
     html = (active.length ? shownA.map(v=>carCard(v)).join('') : `<div class="empty">Δεν υπάρχουν οχήματα μέσα.<br>Πάτα «+ Νέο όχημα».</div>`);
   } else {
     const hist = all.filter(v=>v.exitAt);
+    const histShown = hist.slice(0,200);
     if (!hist.length){ bulkMode = false; bulkSel.clear(); }
     else bulkSel.forEach(id => { if (!hist.some(v=>v.id===id)) bulkSel.delete(id); });
+    const allSel = bulkMode && histShown.length && histShown.every(v=>bulkSel.has(v.id));
     const bar = (CAN && hist.length) ? `<div class="bulkbar">${bulkMode
-      ? `<button class="btn" id="bulkCancel">Άκυρο</button><span class="bulkcount">${bulkSel.size ? bulkSel.size+' επιλεγμένα' : 'Πάτα οχήματα για επιλογή'}</span><button class="btn danger" id="bulkDel" ${bulkSel.size?'':'disabled'}>🗑 Διαγραφή${bulkSel.size?' ('+bulkSel.size+')':''}</button>`
+      ? `<button class="btn" id="bulkCancel">Άκυρο</button><button class="btn" id="bulkAll">${allSel?'Αποεπιλογή όλων':'Επιλογή όλων'}</button><span class="bulkcount">${bulkSel.size ? bulkSel.size+' επιλεγμένα' : ''}</span><button class="btn danger" id="bulkDel" ${bulkSel.size?'':'disabled'}>🗑 Διαγραφή${bulkSel.size?' ('+bulkSel.size+')':''}</button>`
       : `<button class="btn" id="bulkStart">☑️ Επιλογή για μαζική διαγραφή</button>`}</div>` : '';
-    html = bar + (hist.length ? hist.slice(0,200).map(v=>carCard(v, bulkMode)).join('') : `<div class="empty">Δεν υπάρχει ιστορικό ακόμα.</div>`);
+    html = bar + (hist.length ? histShown.map(v=>carCard(v, bulkMode)).join('') : `<div class="empty">Δεν υπάρχει ιστορικό ακόμα.</div>`);
   }
   $('#list').innerHTML = html;
   document.querySelectorAll('.tab[data-tab]').forEach(t=>t.classList.toggle('on', t.dataset.tab===tab && !k));
@@ -1226,6 +1228,12 @@ $('#list').addEventListener('click', async e=>{
   if (e.target.id==='addFromSearch'){ ensureStaff(); return openForm(null, $('#q').value.trim()); }
   if (e.target.closest('#bulkStart')){ bulkMode = true; bulkSel.clear(); render(); return; }
   if (e.target.closest('#bulkCancel')){ bulkMode = false; bulkSel.clear(); render(); return; }
+  if (e.target.closest('#bulkAll')){
+    const histShown = all.filter(v=>v.exitAt).slice(0,200);
+    const allSel = histShown.length && histShown.every(v=>bulkSel.has(v.id));
+    if (allSel) bulkSel.clear(); else histShown.forEach(v=>bulkSel.add(v.id));
+    render(); return;
+  }
   if (e.target.closest('#bulkDel')){
     if (!bulkSel.size) return;
     if (!confirm(`Να διαγραφούν οριστικά ${bulkSel.size} οχήματα από το ιστορικό; Η ενέργεια δεν αναιρείται.`)) return;
