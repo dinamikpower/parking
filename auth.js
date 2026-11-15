@@ -26,7 +26,7 @@ const CSS = `
 #lg button:disabled{opacity:.6}
 #lg .err{color:#b91c1c;font-size:14px;min-height:20px;margin-top:10px} #lg .ok{color:#166534}
 #ud{border:0;padding:0;width:min(520px,100vw);max-width:100vw;background:var(--card,#fff);color:var(--text,#0f172a);
-  position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;border-radius:22px 22px 0 0;max-height:calc(100dvh - 12px);overflow-y:auto;overscroll-behavior:contain;
+  position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;border-radius:22px 22px 0 0;max-height:calc(100dvh - 120px);overflow-y:auto;overscroll-behavior:contain;
   box-shadow:0 -10px 40px rgba(0,0,0,.5);animation:sheetUp .3s cubic-bezier(.2,.85,.25,1)}
 #ud::backdrop{background:rgba(0,0,0,.55)}
 #ud .in{padding:18px} #ud h2{margin:0 0 4px;font-size:19px} #ud .sub{color:#64748b;font-size:14px;margin-bottom:12px}
