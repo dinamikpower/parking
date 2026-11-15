@@ -69,6 +69,12 @@
   .btn.danger{background:var(--rd-bg);border-color:var(--rd-bd);color:var(--rd-fg)}
   .grow{flex:1}
   .empty{text-align:center;color:var(--muted);padding:40px 10px}
+  .bulkbar{display:flex;align-items:center;gap:10px;margin:0 2px 14px;flex-wrap:wrap}
+  .bulkbar .bulkcount{color:var(--muted);font-size:13px;flex:1}
+  .card.selectable{position:relative;padding-left:46px;cursor:pointer}
+  .card.selectable .selcb{position:absolute;left:14px;top:16px;pointer-events:none}
+  .card.selectable .selcb input{width:21px;height:21px;accent-color:var(--accent)}
+  .card.selectable.on{outline:2px solid var(--accent);outline-offset:-1px}
   h3{margin:18px 2px 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
   .fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:20;background:var(--accent);color:#fff;border:0;border-radius:99px;padding:16px 22px;font-size:17px;font-weight:700;box-shadow:0 6px 18px rgba(37,99,235,.45)}
   dialog{border:0;border-radius:16px;padding:0;width:min(520px,94vw);background:var(--card);color:var(--text)}
@@ -542,7 +548,8 @@ if (LIVE) {
 const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let mapsList = [];
-let zoneF = '', openId = null, lastK = '', all = [], tab = 'active', editing = null, mapApi = null, pickedMap = null;   // pickedMap: ο χάρτης απ' όπου επιλέχθηκε η θέση
+let zoneF = '', openId = null, lastK = '', all = [], tab = 'active', editing = null, mapApi = null, pickedMap = null;   // pickedMap: ο
+let bulkMode = false; const bulkSel = new Set();   // μαζική διαγραφή στο ιστορικό χάρτης απ' όπου επιλέχθηκε η θέση
 
 const modeEl = $('#mode');
 // Σε live λειτουργία δεν δείχνουμε τίποτα· εμφανίζεται μήνυμα μόνο αν υπάρξει πρόβλημα σύνδεσης/σερβερ
@@ -617,10 +624,12 @@ function prefillFromHistory(){
 $('#cols').addEventListener('click', e => { const b = e.target.closest('[data-col]'); if (!b) return; pickedColor = pickedColor===b.dataset.col ? '' : b.dataset.col; renderCols(); });
 
 /* ---------- Απόδοση ---------- */
-function carCard(v){
+function carCard(v, sel){
   const inside = !v.exitAt;
   const phone = v.phone ? `<a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>` : '';
-  return `<div class="card${v.id===openId?' open':''}" data-id="${v.id}">
+  const checked = sel && bulkSel.has(v.id);
+  return `<div class="card${v.id===openId?' open':''}${sel?' selectable':''}${checked?' on':''}" data-id="${v.id}">
+    ${sel?`<span class="selcb"><input type="checkbox" tabindex="-1" ${checked?'checked':''} aria-label="Επιλογή"></span>`:''}
     <div class="row"><span class="plate" data-c="${ccOf(v)}">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc"><span class="lb">${esc(v.brand||'')}</span><span class="lp${v.location?'':' wait'}">${v.location?'📍 '+esc(v.location):'⏳ Χωρίς θέση'}</span></span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
     <div class="more"><div>
     <div class="meta">
@@ -667,16 +676,21 @@ function render(){
     const mIn = m.filter(v=>!v.exitAt), mOut = m.filter(v=>v.exitAt);
     if (!m.length) html = `<div class="empty">Καμία εγγραφή για «${esc(raw.toUpperCase())}».${true?'<br><br><button class="btn primary" id="addFromSearch">+ Καταχώρηση αυτής της πινακίδας</button>':''}</div>`;
     else {
-      if (mIn.length) html += `<h3>Στο παρκινγκ τώρα</h3>` + mIn.map(carCard).join('');
+      if (mIn.length) html += `<h3>Στο παρκινγκ τώρα</h3>` + mIn.map(v=>carCard(v)).join('');
       else html += `<div class="card"><b>Δεν είναι μέσα αυτή τη στιγμή.</b></div>`;
-      if (mOut.length) html += `<h3>Προηγούμενες φορές</h3>` + mOut.slice(0,30).map(carCard).join('');
+      if (mOut.length) html += `<h3>Προηγούμενες φορές</h3>` + mOut.slice(0,30).map(v=>carCard(v)).join('');
     }
   } else if (tab === 'active') {
     const shownA = zoneF ? active.filter(v => ((v.location || '').trim() || 'Χωρίς θέση').toLowerCase() === zoneF) : active;
-    html = (active.length ? shownA.map(carCard).join('') : `<div class="empty">Δεν υπάρχουν οχήματα μέσα.<br>Πάτα «+ Νέο όχημα».</div>`);
+    html = (active.length ? shownA.map(v=>carCard(v)).join('') : `<div class="empty">Δεν υπάρχουν οχήματα μέσα.<br>Πάτα «+ Νέο όχημα».</div>`);
   } else {
     const hist = all.filter(v=>v.exitAt);
-    html = hist.length ? hist.slice(0,200).map(carCard).join('') : `<div class="empty">Δεν υπάρχει ιστορικό ακόμα.</div>`;
+    if (!hist.length){ bulkMode = false; bulkSel.clear(); }
+    else bulkSel.forEach(id => { if (!hist.some(v=>v.id===id)) bulkSel.delete(id); });
+    const bar = (CAN && hist.length) ? `<div class="bulkbar">${bulkMode
+      ? `<button class="btn" id="bulkCancel">Άκυρο</button><span class="bulkcount">${bulkSel.size ? bulkSel.size+' επιλεγμένα' : 'Πάτα οχήματα για επιλογή'}</span><button class="btn danger" id="bulkDel" ${bulkSel.size?'':'disabled'}>🗑 Διαγραφή${bulkSel.size?' ('+bulkSel.size+')':''}</button>`
+      : `<button class="btn" id="bulkStart">☑️ Επιλογή για μαζική διαγραφή</button>`}</div>` : '';
+    html = bar + (hist.length ? hist.slice(0,200).map(v=>carCard(v, bulkMode)).join('') : `<div class="empty">Δεν υπάρχει ιστορικό ακόμα.</div>`);
   }
   $('#list').innerHTML = html;
   document.querySelectorAll('.tab[data-tab]').forEach(t=>t.classList.toggle('on', t.dataset.tab===tab && !k));
@@ -1210,6 +1224,22 @@ $('#stats').onclick = e => { const z = e.target.closest('.stat.z'); if (!z) retu
 $('#add').onclick = ()=>{ ensureStaff(); openForm(null, $('#q').value.trim()); };
 $('#list').addEventListener('click', async e=>{
   if (e.target.id==='addFromSearch'){ ensureStaff(); return openForm(null, $('#q').value.trim()); }
+  if (e.target.closest('#bulkStart')){ bulkMode = true; bulkSel.clear(); render(); return; }
+  if (e.target.closest('#bulkCancel')){ bulkMode = false; bulkSel.clear(); render(); return; }
+  if (e.target.closest('#bulkDel')){
+    if (!bulkSel.size) return;
+    if (!confirm(`Να διαγραφούν οριστικά ${bulkSel.size} οχήματα από το ιστορικό; Η ενέργεια δεν αναιρείται.`)) return;
+    const ids = [...bulkSel];
+    try { await Promise.all(ids.map(id => store.remove(id))); toast(`Διαγράφηκαν ${ids.length} οχήματα`); }
+    catch (err) { toast('Σφάλμα: ' + err.message); }
+    bulkMode = false; bulkSel.clear(); render();
+    return;
+  }
+  if (bulkMode){
+    const selCard = e.target.closest('.card.selectable[data-id]');
+    if (selCard){ const id = selCard.dataset.id; bulkSel.has(id) ? bulkSel.delete(id) : bulkSel.add(id); render(); }
+    return;
+  }
   const btn = e.target.closest('[data-act]');
   if (!btn){                                   // πάτημα πάνω στην κάρτα → ανοίγει/κλείνει (τα υπόλοιπα κλείνουν)
     if (e.target.closest('a')) return;
@@ -1239,6 +1269,7 @@ $('#list').addEventListener('click', async e=>{
 $('#q').addEventListener('input',render);
 document.querySelectorAll('.tab[data-tab]').forEach(t=>t.onclick=()=>{
   if (t.dataset.tab==='map') return mapApi.open({ mode:'browse' });
+  if (t.dataset.tab!=='history'){ bulkMode = false; bulkSel.clear(); }
   tab=t.dataset.tab; zoneF=''; $('#q').value=''; render();
 });
 $('#mapF').onclick = ()=>mapApi.open({ mode:'pick', onPick: (label, mapId)=>{ $('#fLoc').value = label; pickedMap = mapId || null; } });
