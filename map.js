@@ -68,6 +68,7 @@ const CSS = `
 .mp-foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mp-foot{transition:opacity .12s}
 .mp-foot:empty,.mp-foot:not(:has(*)){display:none}
+#mapDlg{position:fixed;inset:0;height:auto;min-height:100vh;background:#0b1220}
 .mp-gear{display:none;position:absolute;left:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:6;width:44px;height:44px;border:0;border-radius:12px;background:#fff;color:#111;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 #mapDlg.editing:not(.islive) .mp-gear{display:block}
 #mapDlg.editing .mp-foot{align-content:flex-start}
