@@ -377,8 +377,8 @@ export function initMap(ctx){
   let mapImg = null;                          // {image,w,h}
   let remote = { list:[], size:3.2, lsize:2.4, shapes:[] }; // τελευταία κατάσταση από τη βάση
   let doc = { list:[], size:3.2, lsize:2.4, shapes:[] }; // τοπική κατάσταση (αλλάζει στην επεξεργασία)
-  const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ffffff'];
-  let tool = 'pan', color = COLORS[4], drawing = null, pend = null;   // tool: pan (κίνηση, προεπιλογή) | pen (ελεύθερο σχέδιο)· pend: σχήμα σε εξέλιξη {k:'rect'|'poly', pts}
+  const COLORS = ['#ef4444','#f97316','#eab308','#84cc16','#22c55e','#14b8a6','#06b6d4','#3b82f6','#1e40af','#a855f7','#ec4899','#be123c','#92400e','#6b7280','#000000','#ffffff'];
+  let tool = 'pan', color = '#3b82f6', drawing = null, pend = null;   // tool: pan (κίνηση, προεπιλογή) | pen (ελεύθερο σχέδιο)· pend: σχήμα σε εξέλιξη {k:'rect'|'poly', pts}
   let mode = 'browse', editing = false, pickCb = null, menuOff = false, fmore = false;
   let zoneFilter = null, focusKey = null, selected = null, startLabel = null, lastLabel = '', undo = [];
   let s = 1, tx = 0, ty = 0, baseW = 0, baseH = 0, saveT = null;
