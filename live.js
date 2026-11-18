@@ -16,6 +16,8 @@ const CSS = `
 .lv-lab:before{display:none}
 .lv-dist{background:linear-gradient(135deg,#ea580c,#fb923c);box-shadow:0 2px 8px rgba(0,0,0,.4);color:#fff;border:0;font-weight:700;font-size:13px;padding:2px 8px;border-radius:7px}
 .lv-dist:before{display:none}
+.lv-hnd{width:32px;height:32px;border-radius:50%;background:#fff;border:3px solid #2563eb;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,.5);transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;touch-action:none}
+.lv-hnd.mv{background:#2563eb;border-color:#fff}
 .lv-vtx{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #888;box-sizing:border-box;transform:translate(-50%,-50%)}
 .lv-me{width:18px;height:18px;border-radius:50%;background:#888;border:3px solid #fff;box-shadow:0 0 0 2px rgba(136,136,136,.5),0 1px 6px rgba(0,0,0,.6);transform:translate(-50%,-50%)}
 .lv-btns{display:flex;flex-direction:column;gap:8px}
@@ -100,8 +102,31 @@ export async function createLive(host, h){
       if (ll.length > 1) L.polyline(ll, { color:d.color||'#888', weight:3, dashArray:'6 6', interactive:false }).addTo(over);
       ll.forEach(p => L.marker(p, { icon:L.divIcon({ className:'lv-ic', iconSize:[0,0], html:'<div class="lv-vtx"></div>' }), interactive:false }).addTo(over));
     }
+    if (d.edit!=null && d.shapes?.[d.edit]) addHandles(d.edit, d.shapes[d.edit], data);
     if (route) route.addTo(over);
     drawLine();
+  }
+  // λαβές επεξεργασίας σχήματος: κύκλοι στις κορυφές (αλλαγή σχήματος) και ✥ στο κέντρο (μετακίνηση όλου)
+  function addHandles(si, sh, dataLayer){
+    if (!Array.isArray(sh.pts) || !sh.pts.length) return;
+    let lay = null; dataLayer.eachLayer(l => { if (l._si===si) lay = l; });
+    const cur = sh.pts.map(p => [+p[0], +p[1]]);                // [lng, lat]
+    const ic = cls => L.divIcon({ className:'lv-ic', iconSize:[0,0], html:`<div class="lv-hnd ${cls||''}">${cls ? '✥' : ''}</div>` });
+    const ctr = () => [cur.reduce((a,p)=>a+p[1],0)/cur.length, cur.reduce((a,p)=>a+p[0],0)/cur.length];
+    const vm = cur.map((p, k) => L.marker([p[1], p[0]], { icon:ic(''), draggable:true, bubblingMouseEvents:false, zIndexOffset:2000 }).addTo(over));
+    const cm = L.marker(ctr(), { icon:ic('mv'), draggable:true, bubblingMouseEvents:false, zIndexOffset:2100 }).addTo(over);
+    const redraw = () => lay?.setLatLngs(cur.map(p => [p[1], p[0]]));
+    vm.forEach((mk, k) => {
+      mk.on('drag', () => { const ll = mk.getLatLng(); cur[k] = [ll.lng, ll.lat]; cm.setLatLng(ctr()); redraw(); });
+      mk.on('dragend', () => h.onShapeEdit?.(si, cur));
+    });
+    let last = null;
+    cm.on('dragstart', () => { last = cm.getLatLng(); });
+    cm.on('drag', () => {
+      const ll = cm.getLatLng(), dy = ll.lat-last.lat, dx = ll.lng-last.lng; last = ll;
+      cur.forEach((p, k) => { p[0] += dx; p[1] += dy; vm[k].setLatLng([p[1], p[0]]); }); redraw();
+    });
+    cm.on('dragend', () => h.onShapeEdit?.(si, cur));
   }
 
   /* ---- πάτημα / παρατεταμένο πάτημα ---- */
@@ -111,7 +136,7 @@ export async function createLive(host, h){
   const stopLp = () => { clearTimeout(lp); lp = null; };
   box.addEventListener('pointerdown', e => {
     stopLp();
-    if (tool==='pen' || e.target.closest('.leaflet-control') || e.target.closest('.lv-spot')) return;
+    if (tool==='pen' || e.target.closest('.leaflet-control') || e.target.closest('.lv-spot') || e.target.closest('.lv-hnd')) return;
     const x0 = e.clientX, y0 = e.clientY, tg = e.target, id = e.pointerId;
     box._lp = { x0, y0 };
     lp = setTimeout(() => {
