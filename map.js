@@ -2,7 +2,7 @@
    - Ανεβάζεις φωτογραφία ή σχέδιο του χώρου και βάζεις τις θέσεις με πάτημα.
    - Η ζώνη προκύπτει από τα γράμματα της ονομασίας (Α12 → ζώνη Α).
    - Ένα όχημα «κάθεται» σε θέση όταν το πεδίο Θέση της καταχώρησής του είναι ίδιο με την ονομασία της θέσης. */
-import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=9';
+import { createLive, walkRoute, geocode, fmtDist } from './live.js?v=10';
 
 const CSS = `
 #mapDlg{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;border-radius:0;padding:0;background:var(--bg);color:var(--text);overflow:hidden}
@@ -67,8 +67,9 @@ const CSS = `
 .mp-sheet .m{color:var(--muted);font-size:14px;margin-top:6px}
 .mp-foot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mp-foot{transition:opacity .12s}
-.hnd{position:absolute;transform:translate(-50%,-50%);width:var(--hs,32px);height:var(--hs,32px);border-radius:50%;background:#fff;border:calc(var(--hs,32px)*.1) solid #2563eb;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,.5);pointer-events:auto;touch-action:none;z-index:8;display:flex;align-items:center;justify-content:center;font-size:calc(var(--hs,32px)*.55);color:#2563eb;line-height:1}
-.hnd.mv{background:#2563eb;color:#fff;border-color:#fff}
+.hnd{position:absolute;transform:translate(-50%,-50%);width:var(--hs,20px);height:var(--hs,20px);border-radius:50%;background:rgba(255,255,255,.85);border:calc(var(--hs,20px)*.1) solid rgba(37,99,235,.9);box-sizing:border-box;box-shadow:0 1px 3px rgba(0,0,0,.35);pointer-events:auto;touch-action:none;z-index:8;display:flex;align-items:center;justify-content:center;font-size:calc(var(--hs,20px)*.6);color:#fff;line-height:1}
+.hnd::after{content:"";position:absolute;inset:-60%;border-radius:50%}
+.hnd.mv{width:calc(var(--hs,20px)*1.25);height:calc(var(--hs,20px)*1.25);background:rgba(37,99,235,.75);border-color:rgba(255,255,255,.9)}
 .mp-foot:empty,.mp-foot:not(:has(*)){display:none}
 #mapDlg{position:fixed;inset:0;height:auto;min-height:100vh;background:#0b1220}
 .mp-gear{display:none;position:absolute;left:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:6;width:44px;height:44px;border:0;border-radius:12px;background:#fff;color:#111;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
@@ -481,7 +482,7 @@ export function initMap(ctx){
   /* ---------- προβολή / zoom ---------- */
   const apply = () => {
     stage.style.transform = `translate(${tx}px,${ty}px) scale(${s})`;
-    stage.style.setProperty('--hs', (32/s).toFixed(2)+'px');
+    stage.style.setProperty('--hs', (20/s).toFixed(2)+'px');
     // ονόματα: ελαφριά αντιστάθμιση του zoom (μακριά → σχετικά μεγαλύτερα) και ελάχιστο μέγεθος 14px στην οθόνη ώστε να διαβάζονται πάντα
     const base = baseW*(doc.lsize||2.4)/100, f = Math.max(.3, Math.min(3, Math.pow(s, -.6)));
     stage.style.setProperty('--lbe', Math.max(base*f, 14/s).toFixed(2)+'px');

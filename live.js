@@ -16,8 +16,9 @@ const CSS = `
 .lv-lab:before{display:none}
 .lv-dist{background:linear-gradient(135deg,#ea580c,#fb923c);box-shadow:0 2px 8px rgba(0,0,0,.4);color:#fff;border:0;font-weight:700;font-size:13px;padding:2px 8px;border-radius:7px}
 .lv-dist:before{display:none}
-.lv-hnd{width:32px;height:32px;border-radius:50%;background:#fff;border:3px solid #2563eb;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,.5);transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;touch-action:none}
-.lv-hnd.mv{background:#2563eb;border-color:#fff}
+.lv-hnd{position:relative;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.85);border:2px solid rgba(37,99,235,.9);box-sizing:border-box;box-shadow:0 1px 3px rgba(0,0,0,.4);transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;touch-action:none}
+.lv-hnd::after{content:"";position:absolute;inset:-12px;border-radius:50%}
+.lv-hnd.mv{width:26px;height:26px;background:rgba(37,99,235,.75);border-color:rgba(255,255,255,.9)}
 .lv-vtx{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #888;box-sizing:border-box;transform:translate(-50%,-50%)}
 .lv-me{width:18px;height:18px;border-radius:50%;background:#888;border:3px solid #fff;box-shadow:0 0 0 2px rgba(136,136,136,.5),0 1px 6px rgba(0,0,0,.6);transform:translate(-50%,-50%)}
 .lv-btns{display:flex;flex-direction:column;gap:8px}
