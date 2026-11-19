@@ -1442,8 +1442,11 @@ async function pushRegister(){
     }
     return;
   }
-  if (Notification.permission === 'granted'){ pushRegister().catch(() => {}); return; }
-  if (Notification.permission === 'denied' || localStorage.getItem('push-no')) return;
+  const msgBar = (txt, btn, fn) => { bar.style.display = 'flex'; bar.innerHTML = `<span style="flex:1">${txt}</span>` + (btn ? `<button class="btn primary">${btn}</button>` : '') + '<button class="btn" data-x>Κλείσιμο</button>'; bar.querySelector('[data-x]').onclick = () => bar.remove(); if (btn) bar.querySelector('.primary').onclick = fn; };
+  const tryReg = async () => { try { await pushRegister(); localStorage.setItem('push-ok','1'); bar.remove(); toast('Οι ειδοποιήσεις ενεργοποιήθηκαν ✓'); } catch (e) { msgBar('Ειδοποιήσεις: ' + (e.message || e) + ' ', 'Ξανά', tryReg); } };
+  if (Notification.permission === 'granted'){ pushRegister().then(() => localStorage.setItem('push-ok','1')).catch(e => { if (ME.head) msgBar('Ειδοποιήσεις: ' + (e.message || e) + ' ', 'Ξανά', tryReg); }); return; }
+  if (Notification.permission === 'denied'){ if (ME.head) msgBar('Οι ειδοποιήσεις είναι απενεργοποιημένες. Άνοιξέ τες από Ρυθμίσεις → Ειδοποιήσεις → (αυτή η εφαρμογή).'); return; }
+  if (!ME.head && localStorage.getItem('push-no')) return;
   bar.style.display = 'flex'; bar.innerHTML = '<span style="flex:1">🔔 Θέλεις ειδοποίηση όταν ζητείται όχημα, ακόμα και με κλειστό αππ;</span><button class="btn primary">Ναι</button><button class="btn" data-x>Όχι</button>';
   bar.querySelector('[data-x]').onclick = () => { localStorage.setItem('push-no','1'); bar.remove(); };
   bar.querySelector('.primary').onclick = async () => {
