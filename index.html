@@ -56,6 +56,8 @@
   .more>div{overflow:hidden;min-height:0}
   .meta{color:var(--muted);font-size:14px;display:flex;flex-wrap:wrap;gap:4px 14px;padding-top:10px}
   .meta a{color:var(--accent);text-decoration:none;font-weight:600}
+  .tag.ask{background:#f59e0b;color:#1f1300;animation:askP 1.6s ease-in-out infinite}
+  @keyframes askP{50%{opacity:.7}}
   .tag{flex:none;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px}
   .tag.in{background:#dcfce7;color:#166534}
   .tag.out{background:#e2e8f0;color:#475569}
@@ -486,6 +488,7 @@ window.__plateKey = plateKey;
 /* ---------- Επίπεδο δεδομένων (Firebase ή τοπικό) ---------- */
 // Ονόματα εγγράφων ανά χάρτη (το «main» κρατά τα παλιά ονόματα ώστε να μη χαθεί ο υπάρχων χάρτης)
 const mapDocNames = id => id==='main' ? { img:'main', spots:'spots', shapes:'shapes' } : { img:id, spots:id+'_spots', shapes:id+'_shapes' };
+let reqs = [];   // αιτήματα οχημάτων (δηλώνεται νωρίς: το διαβάζει και η λίστα οχημάτων)
 let store, ME = null;      // ME: ο συνδεδεμένος υπάλληλος (μόνο σε live λειτουργία)
 if (LIVE) {
   const { initializeApp } = await pApp;
@@ -685,16 +688,18 @@ $('#cols').addEventListener('click', e => { const b = e.target.closest('[data-co
 /* ---------- Απόδοση ---------- */
 function carCard(v, sel){
   const inside = !v.exitAt;
+  const ask = inside ? reqs.find(r => r.vehicleId === v.id && r.fromCustomer && Date.now() - r.at < REQ_TTL) : null;   // ζητήθηκε από τον πελάτη
   const phone = v.phone ? `<a href="tel:${esc(v.phone)}">📞 ${esc(v.phone)}</a>` : '';
   const checked = sel && bulkSel.has(v.id);
   return `<div class="card${v.id===openId?' open':''}${sel?' selectable':''}${checked?' on':''}" data-id="${v.id}">
     ${sel?`<span class="selcb"><input type="checkbox" tabindex="-1" ${checked?'checked':''} aria-label="Επιλογή"></span>`:''}
-    <div class="row"><span class="plate" data-c="${ccOf(v)}">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc"><span class="lb">${esc(v.brand||'')}</span><span class="lp${v.location?'':' wait'}">${v.location?'📍 '+esc(v.location):'⏳ Χωρίς θέση'}</span></span><span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
+    <div class="row"><span class="plate" data-c="${ccOf(v)}">${esc(v.plate)}</span>${colHex(v.color)?`<span class="cdot sm" style="--c:${colHex(v.color)}" title="${esc(v.color)}"></span>`:''}<span class="loc"><span class="lb">${esc(v.brand||'')}</span><span class="lp${v.location?'':' wait'}">${v.location?'📍 '+esc(v.location):'⏳ Χωρίς θέση'}</span></span>${ask?`<span class="tag ask">📲 ΖΗΤΗΘΗΚΕ</span>`:''}<span class="tag ${inside?'in':'out'}">${inside?'ΜΕΣΑ':'ΕΦΥΓΕ'}</span><span class="chev">▼</span></div>
     <div class="more"><div>
     <div class="meta">
       <span>⏱ ${fmtT(v.entryAt)}${inside?` · ${fmtDur(v.entryAt,Date.now())}`:` → ${fmtT(v.exitAt)} · ${fmtDur(v.entryAt,v.exitAt)}`}</span>
       ${(v.brand||v.color)?`<span>🚗 ${esc([v.brand,v.color].filter(Boolean).join(' · '))}</span>`:''}
       ${CAN&&v.keyNo?`<span>🔑 ${esc(v.keyNo)}</span>`:''}${CAN?phone:''}
+      ${ask?`<span>📲 Ο πελάτης το ζήτησε στις ${fmtT(ask.at)}${ask.doneAt?` · το ανέλαβε ${esc(ask.doneBy||'κάποιος')}`:''}</span>`:''}
       ${v.note?`<span>📝 ${esc(v.note)}</span>`:''}
       ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}${v.exitAt&&v.exitBy?`<span>🚪 Παρέδωσε: ${esc(v.exitBy)}</span>`:''}
     </div>
@@ -1397,7 +1402,7 @@ setTimeout(() => { if (!navigator.connection?.saveData) loadAlpr().catch(() => {
 // ---- Ειδοποιήσεις «χρειάζεται το όχημα» ----
 const mkToken = () => { const a = new Uint8Array(10); crypto.getRandomValues(a); return [...a].map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,16); };
 const REQ_TTL = 6*3600*1000;
-let reqs = [], reqFirst = true; const reqSeen = new Set();
+let reqFirst = true; const reqSeen = new Set();
 const reqBar = document.createElement('div'); reqBar.id = 'reqBar'; document.body.append(reqBar);
 function beep(){ try { const A = window.AudioContext || window.webkitAudioContext, c = new A(); [0, .22].forEach(t => { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = 880; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(.25, c.currentTime + t); g.gain.exponentialRampToValueAtTime(.001, c.currentTime + t + .18); o.start(c.currentTime + t); o.stop(c.currentTime + t + .2); }); } catch {} }
 function focusCar(id){ $('#q').value = ''; tab = 'active'; zoneF = ''; lastK = ''; openId = id; render(); setTimeout(() => document.querySelector(`.card[data-id="${id}"]`)?.scrollIntoView({ block:'center', behavior:'smooth' }), 60); }
@@ -1436,7 +1441,7 @@ store.subscribeRequests?.(rows => {
   const fresh = rows.filter(r => !r.doneAt && Date.now() - r.at < REQ_TTL && !reqSeen.has(r.id));
   rows.forEach(r => reqSeen.add(r.id));
   if (!reqFirst && fresh.length && (!CAN || fresh.some(r => r.fromCustomer))){ beep(); navigator.vibrate?.([250,120,250]); }
-  reqFirst = false; drawReqs();
+  reqFirst = false; drawReqs(); render();
 });
 
 /* ---------- Push ειδοποιήσεις (υπάλληλοι, και με κλειστό αππ) ---------- */
