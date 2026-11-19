@@ -1420,9 +1420,12 @@ store.subscribeRequests?.(rows => {
 /* ---------- Push ειδοποιήσεις (υπάλληλοι, και με κλειστό αππ) ---------- */
 async function pushRegister(){
   const { app, db, fs } = window.__fb;
-  const { getMessaging, getToken } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js');
+  const { getMessaging, getToken, deleteToken } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js');
   const reg = await navigator.serviceWorker.ready;
-  const token = await getToken(getMessaging(app), { serviceWorkerRegistration: reg });
+  const msg = getMessaging(app);
+  // μία φορά: πετάμε το παλιό (πιθανώς άκυρο) token και παίρνουμε καινούριο
+  try { if (!localStorage.getItem('push-fresh-2')){ await deleteToken(msg).catch(()=>{}); localStorage.setItem('push-fresh-2','1'); } } catch {}
+  const token = await getToken(msg, { serviceWorkerRegistration: reg });
   if (!token) throw new Error('Δεν δόθηκε token');
   await fs.setDoc(fs.doc(db, 'pushTokens', token), { uid: ME.uid, name: staff(), head: !!ME.head, at: Date.now() });
 }
