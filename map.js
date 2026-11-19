@@ -1060,5 +1060,15 @@ export function initMap(ctx){
       }
       return null;
     },
+    // όλες οι ονομασμένες θέσεις και ζώνες όλων των χαρτών, για επιλογή από λίστα
+    places: () => {
+      const out = [];
+      for (const mp of maps){
+        const seen = new Set();
+        for (const p of (allSpots[mp.id]||[])){ if (!p.l) continue; out.push({ label:String(p.l), mapId:mp.id, mapName:mp.name||'', kind:'spot', zone:zoneOf(p.l) }); seen.add(key(p.l)); }
+        for (const s of (allShapes[mp.id]||[])){ if (!s.n || seen.has(key(s.n))) continue; seen.add(key(s.n)); out.push({ label:String(s.n), mapId:mp.id, mapName:mp.name||'', kind:'zone', zone:'' }); }
+      }
+      return out;
+    },
     hasSpot: (label, mapId) => { if (!label) return false; const k = key(label), ids = mapId && (allSpots[mapId]||allShapes[mapId]) ? [mapId] : Object.keys({...allSpots, ...allShapes}); return ids.some(id => (allSpots[id]||[]).some(p => key(p.l)===k) || (allShapes[id]||[]).some(s => s.n && key(s.n)===k)); }, spotCount: () => remote.list.length };
 }

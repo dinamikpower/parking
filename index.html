@@ -17,7 +17,7 @@
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js">
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js">
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js">
-<link rel="modulepreload" href="./map.js?v=45">
+<link rel="modulepreload" href="./map.js?v=46">
 <link rel="modulepreload" href="./auth.js?v=13">
 <link rel="modulepreload" href="./live.js?v=10">
 
@@ -328,6 +328,16 @@
   /* «μέσα» πράσινο στην κορυφή, «ΕΦΥΓΕ» κόκκινο κουτάκι */
   #count{background:#16a34a;color:#fff}
   .tag.out{background:#fee2e2;color:#b91c1c}
+#plDlg{position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;width:min(520px,100vw);max-width:100vw;border:0;border-radius:22px 22px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));max-height:calc(100dvh - 90px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 -10px 40px rgba(0,0,0,.5);animation:sheetUp .3s cubic-bezier(.2,.85,.25,1);background:var(--card);color:var(--text)}
+#plDlg::backdrop{background:rgba(0,0,0,.55)}
+#plDlg .plh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:17px}
+#plDlg #plQ{width:100%;margin-bottom:10px}
+#plDlg .plg{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:12px 2px 6px}
+#plDlg .plw{display:flex;flex-wrap:wrap;gap:8px}
+#plDlg .pli{padding:9px 13px;border-radius:12px;border:1px solid var(--line);background:var(--chip,var(--card));color:var(--text);font-size:15px;font-weight:700}
+#plDlg .pli.zone{border-style:dashed}
+#plDlg .pli.occ{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
+#plDlg .pli small{display:block;font-size:10px;font-weight:600;opacity:.8}
 </style>
 </head>
 <body>
@@ -377,6 +387,7 @@
     <div class="plrow">
       <input id="fLoc" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="π.χ. Α12 ή Όροφος 2 - Β14">
       <button class="cam" id="mapF" type="button" aria-label="Επιλογή από χάρτη" style="background:var(--accent);color:#fff"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.2v13.6L9 17.6l6 2.2 6-2.2V4.2L15 6.4 9 4zM9 4v13.6M15 6.4v13.4"/></svg></button>
+      <button class="cam" id="listF" type="button" aria-label="Επιλογή από λίστα" style="background:var(--accent);color:#fff"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></button>
     </div>
     <div class="chips" id="chips"></div>
     <div class="two pkh">
@@ -416,12 +427,13 @@
   </div>
 </dialog>
 
+<dialog id="plDlg"><div class="plh"><b>Επιλογή θέσης</b><button type="button" class="btn" id="plX">Κλείσιμο</button></div><input id="plQ" type="search" placeholder="Αναζήτηση θέσης…" autocomplete="off" autocapitalize="characters" enterkeyhint="search"><div id="plList"></div></dialog>
 <script type="module">
 /* ============================================================
    Ρυθμίσεις: το firebase-config.js δημιουργείται από το setup.sh.
    Αν δεν υπάρχει, η εφαρμογή τρέχει σε DEMO (τοπικά, μόνο σε αυτή τη συσκευή).
    ============================================================ */
-import { initMap } from './map.js?v=45';
+import { initMap } from './map.js?v=46';
 import { loadAlpr, readPlates } from './alpr.js?v=1';
 // Ξεκινούν όλα μαζί (παράλληλα) αντί το ένα μετά το άλλο
 const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
@@ -1284,6 +1296,30 @@ document.querySelectorAll('.tab[data-tab]').forEach(t=>t.onclick=()=>{
   tab=t.dataset.tab; zoneF=''; $('#q').value=''; render();
 });
 $('#mapF').onclick = ()=>mapApi.open({ mode:'pick', onPick: (label, mapId)=>{ $('#fLoc').value = label; pickedMap = mapId || null; } });
+/* επιλογή θέσης από λίστα (όλες οι θέσεις και ζώνες που έχουν φτιαχτεί στους χάρτες) */
+function renderPlaces(){
+  const q = plateKey($('#plQ').value || ''), places = (mapApi?.places?.() || []);
+  const occ = new Map(); for (const v of all) if (!v.exitAt && v.location) occ.set(plateKey(v.location), v.plate);
+  const nat = (a,b)=>String(a.label).localeCompare(String(b.label),'el',{numeric:true});
+  const maps = [...new Set(places.map(p=>p.mapId))];
+  const multi = maps.length>1;
+  let html = '';
+  for (const mid of maps){
+    const ps = places.filter(p=>p.mapId===mid && (!q || plateKey(p.label).includes(q)));
+    if (!ps.length) continue;
+    const mname = ps[0].mapName;
+    const zones = ps.filter(p=>p.kind==='zone').sort(nat), spots = ps.filter(p=>p.kind==='spot');
+    const byZ = new Map(); for (const p of spots.sort(nat)){ const z = p.zone; if (!byZ.has(z)) byZ.set(z, []); byZ.get(z).push(p); }
+    const item = p => { const o = p.kind==='spot' && occ.has(plateKey(p.label)); return `<button type="button" class="pli${p.kind==='zone'?' zone':''}${o?' occ':''}" data-l="${esc(p.label)}" data-m="${esc(p.mapId)}">${esc(p.label)}${o?`<small>${esc(occ.get(plateKey(p.label)))}</small>`:''}</button>`; };
+    if (zones.length) html += `<div class="plg">${multi?esc(mname)+' · ':''}Ζώνες</div><div class="plw">${zones.map(item).join('')}</div>`;
+    for (const [z, arr] of byZ) html += `<div class="plg">${multi?esc(mname)+' · ':''}${z==='—'?'Θέσεις':'Ζώνη '+esc(z)}</div><div class="plw">${arr.map(item).join('')}</div>`;
+  }
+  $('#plList').innerHTML = html || '<div class="empty">Δεν υπάρχουν θέσεις στον χάρτη ακόμα.</div>';
+}
+$('#listF').onclick = ()=>{ $('#plQ').value = ''; renderPlaces(); $('#plDlg').showModal(); document.activeElement?.blur?.(); };
+$('#plX').onclick = ()=>$('#plDlg').close();
+$('#plQ').addEventListener('input', renderPlaces);
+$('#plList').addEventListener('click', e=>{ const b = e.target.closest('.pli'); if (!b) return; $('#fLoc').value = b.dataset.l; pickedMap = b.dataset.m || null; $('#plDlg').close(); });
 
 let tt; function toast(m){ document.querySelector('.toast')?.remove(); const d=document.createElement('div'); d.className='toast'; d.textContent=m; document.body.append(d); clearTimeout(tt); tt=setTimeout(()=>d.remove(),2200); }
 
