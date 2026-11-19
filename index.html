@@ -223,6 +223,27 @@
   #chDlg .chbtn{padding:11px 14px;font-size:16px;text-align:left;display:flex;align-items:baseline;gap:8px}
   #chDlg .chbtn small{display:inline;margin:0;font-size:12.5px;opacity:.75}
   #chDlg .chx{padding:9px;text-align:center;border:1px solid var(--line);color:var(--text)}
+  /* μενού μετά τη σάρωση πινακίδας */
+  #chDlg .chp{justify-content:center;padding:6px 0 2px}
+  #chDlg .chp .plate{font-size:30px}
+  #chDlg .chs{display:flex;justify-content:center;margin:2px 0 8px}
+  #chDlg .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:13.5px;font-weight:600;background:rgba(148,163,184,.18);color:var(--muted)}
+  #chDlg .pill.ok{background:rgba(34,197,94,.16);color:#16a34a}
+  #chDlg .pill.wait{background:rgba(245,158,11,.18);color:#d97706}
+  #chDlg .chbtn{width:100%;display:flex;align-items:center;gap:14px;padding:13px 14px;border-radius:16px;text-align:left;font-size:17px;font-weight:700;border:1px solid var(--line);background:var(--card);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  #chDlg .chbtn:active{transform:scale(.985)}
+  #chDlg .chbtn .ci{flex:none;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-size:21px;background:rgba(37,99,235,.14)}
+  #chDlg .chbtn.in .ci{background:rgba(34,197,94,.18)}
+  #chDlg .chbtn.out .ci{background:rgba(239,68,68,.16)}
+  #chDlg .chbtn.park .ci{background:rgba(37,99,235,.16)}
+  #chDlg .chbtn .ct{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  #chDlg .chbtn .ct small{display:block;margin:0;font-size:13px;font-weight:500;color:var(--muted);opacity:1}
+  #chDlg .chbtn::after{content:"›";font-size:24px;color:var(--muted);opacity:.7}
+  #chDlg .chbtn.primary{background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(37,99,235,.35)}
+  #chDlg .chbtn.primary .ci{background:rgba(255,255,255,.22)}
+  #chDlg .chbtn.primary .ct small,#chDlg .chbtn.primary::after{color:rgba(255,255,255,.85)}
+  #chDlg .chbtn:disabled{opacity:.4;box-shadow:none}
+  #chDlg .chx{width:100%;padding:12px;border:0;background:transparent;color:var(--muted);font-weight:600;font-size:16px}
   .lp.wait{opacity:.7;font-style:italic}
   .badge[hidden]{display:none}
   #userBtn{background:var(--badge);color:var(--badge-fg)}
@@ -1236,11 +1257,12 @@ const chDlg = document.createElement('dialog'); chDlg.id = 'chDlg'; document.bod
 chDlg.addEventListener('click', e => { if (e.target === chDlg) chDlg.close(); });
 function scanChoice(p, col){
   const k = plateKey(p), cur = all.find(v => !v.exitAt && (v.plateKey||plateKey(v.plate)) === k);
+  const row = (c, cls, ic, t, sub, dis) => `<button class="btn chbtn ${cls}" data-c="${c}" ${dis?'disabled':''}><span class="ci">${ic}</span><span class="ct">${t}<small>${sub}</small></span></button>`;
   chDlg.innerHTML = `<div class="chb"><div class="chp"><span class="plate" data-c="${ccOf({plate:p})}">${esc(p)}</span></div>
-    <div class="chs">${cur ? (cur.location ? `Μέσα στο παρκινγκ · 📍 ${esc(cur.location)}` : 'Αναμένει παρκάρισμα · χωρίς θέση') : 'Δεν είναι μέσα αυτή τη στιγμή'}</div>
-    <button class="btn ${cur ? '' : 'primary'} chbtn" data-c="in">⬇ Είσοδος <small>νέα καταχώρηση</small></button>
-    <button class="btn ${cur ? 'go' : ''} chbtn" data-c="out" ${cur ? '' : 'disabled'}>⬆ Έξοδος <small>${cur ? 'το όχημα έφυγε' : 'δεν είναι μέσα'}</small></button>
-    ${cur ? `<button class="btn ${cur.location ? '' : 'primary'} chbtn" data-c="park">📍 ${cur.location ? 'Αλλαγή θέσης' : 'Παρκάρισμα'} <small>${cur.location ? 'το μετακίνησα' : 'ορισμός θέσης'}</small></button>` : ''}
+    <div class="chs">${cur ? (cur.location ? `<span class="pill ok">● Μέσα · 📍 ${esc(cur.location)}</span>` : '<span class="pill wait">● Αναμένει παρκάρισμα</span>') : '<span class="pill">Δεν είναι μέσα τώρα</span>'}</div>
+    ${row('in', cur ? 'in' : 'primary in', '⬇', 'Είσοδος', 'νέα καταχώρηση')}
+    ${row('out', cur ? 'out' : '', '⬆', 'Έξοδος', cur ? 'το όχημα έφυγε' : 'δεν είναι μέσα', !cur)}
+    ${cur ? row('park', cur.location ? 'park' : 'primary park', '📍', cur.location ? 'Αλλαγή θέσης' : 'Παρκάρισμα', cur.location ? 'το μετακίνησα' : 'ορισμός θέσης στον χάρτη') : ''}
     <button class="btn chx" data-c="x">Ακύρωση</button></div>`;
   chDlg.onclick = async e => {
     if (e.target === chDlg) return chDlg.close();
