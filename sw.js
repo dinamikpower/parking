@@ -1,10 +1,11 @@
 // Απλό cache του κελύφους ώστε η εφαρμογή να ανοίγει γρήγορα και χωρίς σήμα.
-const C = 'parking-shell-v149', T = 'parking-tiles-v1', A = 'parking-ai-v1', F = 'parking-fb-v1';
+const C = 'parking-shell-v150', T = 'parking-tiles-v1', A = 'parking-ai-v1', F = 'parking-fb-v1';
 const SHELL = ['./', './index.html', './map.js?v=46', './alpr.js?v=1', './auth.js?v=13', './live.js?v=10', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css', './manifest.json', './icon-192.png', './apple-touch-icon.png', './icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' }))))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C && k !== T && k !== A && k !== F).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
+  if (u.origin === location.origin && (u.pathname.startsWith('/r/') || u.pathname === '/r.html')) return;   // σελίδα πελάτη: χωρίς cache του shell
   if (u.hostname === 'server.arcgisonline.com'){            // πλακίδια δορυφορικού: πρώτα η μνήμη (άμεσο άνοιγμα, δουλεύει και με αδύναμο σήμα)
     e.respondWith(caches.open(T).then(async c => {
       const hit = await c.match(e.request); if (hit) return hit;

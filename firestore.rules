@@ -38,6 +38,18 @@ service cloud.firestore {
       allow create: if d == 'init' && isOwner() && noInit();
     }
 
+    // σελίδα πελάτη: κάθε όχημα έχει ένα μυστικό link (links/{κωδικός}). Διαβάζεται μόνο με τον κωδικό (όχι λίστα).
+    // Ο πελάτης μπορεί να γράψει ΜΟΝΟ askAt (ώρα διακομιστή), το πολύ μία φορά ανά 2 λεπτά, και όχι όταν το όχημα έχει φύγει.
+    match /links/{t} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isStaff();
+      allow delete: if isHead();
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['askAt'])
+                    && request.resource.data.askAt == request.time
+                    && resource.data.get('st', '') != 'out'
+                    && (resource.data.get('askAt', null) == null || request.time > resource.data.askAt + duration.value(2, 'm'));
+    }
     match /pushTokens/{t} {
       allow read: if isHead();
       allow create, update: if isStaff() && request.resource.data.uid == request.auth.uid;

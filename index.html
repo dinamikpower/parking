@@ -329,6 +329,14 @@
   #count{background:#16a34a;color:#fff}
   .tag.out{background:#fee2e2;color:#b91c1c}
 #plDlg{position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;width:min(520px,100vw);max-width:100vw;border:0;border-radius:22px 22px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));max-height:calc(100dvh - 90px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 -10px 40px rgba(0,0,0,.5);animation:sheetUp .3s cubic-bezier(.2,.85,.25,1);background:var(--card);color:var(--text)}
+#lkDlg{position:fixed;top:auto;bottom:0;left:0;right:0;margin:0 auto;width:min(520px,100vw);max-width:100vw;border:0;border-radius:22px 22px 0 0;padding:16px;background:var(--bg,var(--card));color:var(--text)}
+#lkDlg::backdrop{background:rgba(0,0,0,.55)}
+#lkDlg .plh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:17px}
+#lkDlg .lkp{font-size:14px;color:var(--muted);margin:0 0 10px}
+#lkDlg #lkPh{width:100%;margin-bottom:10px}
+#lkDlg .lkb{display:flex;gap:8px}
+#lkDlg .lkb .btn{text-align:center;text-decoration:none}
+#lkDlg .lku{font-size:11px;color:var(--muted);word-break:break-all;margin-top:10px}
 #plDlg::backdrop{background:rgba(0,0,0,.55)}
 #plDlg .plh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:17px}
 #plDlg #plQ{width:100%;margin-bottom:10px}
@@ -427,6 +435,7 @@
   </div>
 </dialog>
 
+<dialog id="lkDlg"><div class="plh"><b>📲 Link για τον πελάτη</b><button type="button" class="btn" id="lkX">Κλείσιμο</button></div><p class="lkp">Στείλε το link με SMS. Ο πελάτης το ανοίγει και ζητά το αυτοκίνητό του χωρίς εφαρμογή.</p><input id="lkPh" type="tel" inputmode="tel" placeholder="Κινητό πελάτη" autocomplete="off"><div class="lkb"><a class="btn primary grow" id="lkSms">📲 Άνοιγμα SMS</a><button type="button" class="btn grow" id="lkCp">Αντιγραφή link</button></div><div class="lku" id="lkU"></div></dialog>
 <dialog id="plDlg"><div class="plh"><b>Επιλογή θέσης</b><button type="button" class="btn" id="plX">Κλείσιμο</button></div><input id="plQ" type="search" placeholder="Αναζήτηση θέσης…" autocomplete="off" autocapitalize="characters" enterkeyhint="search"><div id="plList"></div></dialog>
 <script type="module">
 /* ============================================================
@@ -471,7 +480,20 @@ if (LIVE) {
       const q = fs.query(col, fs.orderBy('entryAt','desc'), fs.limit(1500));
       return fs.onSnapshot(q, snap => cb(snap.docs.map(d => ({ id:d.id, ...d.data(), entryAt:d.data().entryAt?.toMillis?.() ?? Date.now(), exitAt:d.data().exitAt?.toMillis?.() ?? null }))), err => window.__status?.('Σφάλμα σερβερ'));
     },
-    async add(v){ await fs.addDoc(col, { ...v, entryAt: fs.serverTimestamp(), exitAt:null }); },
+    async add(v){
+      const ct = mkToken(), ref = fs.doc(col);
+      await fs.setDoc(ref, { ...v, ct, entryAt: fs.serverTimestamp(), exitAt:null });
+      try { await fs.setDoc(fs.doc(db,'links',ct), { vid: ref.id, st:'in' }); } catch(e){ console.warn('link', e); }
+      return { id: ref.id, ct };
+    },
+    // κωδικός για το link πελάτη (δημιουργείται και για παλιά οχήματα που δεν έχουν)
+    async ensureLink(v){
+      let ct = v.ct;
+      if (!ct){ ct = mkToken(); await fs.updateDoc(fs.doc(db,'vehicles',v.id), { ct }); }
+      const lr = fs.doc(db,'links',ct), s = await fs.getDoc(lr);
+      if (!s.exists()) await fs.setDoc(lr, { vid: v.id, st:'in' });
+      return ct;
+    },
     async update(id,p){ await fs.updateDoc(fs.doc(db,'vehicles',id), p); },
     async exit(id){ await fs.updateDoc(fs.doc(db,'vehicles',id), { exitAt: fs.serverTimestamp(), exitBy: staff() }); },
     async remove(id){ await fs.deleteDoc(fs.doc(db,'vehicles',id)); },
@@ -521,7 +543,8 @@ if (LIVE) {
   const sorted=()=>load().sort((a,b)=>b.entryAt-a.entryAt);
   store = {
     subscribe(cb){ subs.add(cb); cb(sorted()); window.addEventListener('storage',()=>cb(sorted())); return ()=>subs.delete(cb); },
-    async add(v){ const a=load(); a.push({ ...v, id:crypto.randomUUID(), entryAt:Date.now(), exitAt:null }); save(a); },
+    async add(v){ const a=load(), id = crypto.randomUUID(), ct = mkToken(); a.push({ ...v, id, ct, entryAt:Date.now(), exitAt:null }); save(a); return { id, ct }; },
+    async ensureLink(v){ if (v.ct) return v.ct; const ct = mkToken(); save(load().map(x=>x.id===v.id?{...x,ct}:x)); return ct; },
     async update(id,p){ save(load().map(x=>x.id===id?{...x,...p}:x)); },
     async exit(id){ save(load().map(x=>x.id===id?{...x,exitAt:Date.now(),exitBy:staff()}:x)); },
     async remove(id){ save(load().filter(x=>x.id!==id)); },
@@ -654,7 +677,7 @@ function carCard(v, sel){
       ${v.note?`<span>📝 ${esc(v.note)}</span>`:''}
       ${v.by?`<span>👤 ${esc(v.by)}</span>`:''}${v.exitAt&&v.exitBy?`<span>🚪 Παρέδωσε: ${esc(v.exitBy)}</span>`:''}
     </div>
-    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.2v13.6L9 17.6l6 2.2 6-2.2V4.2L15 6.4 9 4zM9 4v13.6M15 6.4v13.4"/></svg>Στον χάρτη</button>':''}${mapApi?.coords?.(v.location, v.mapId)?'<button class="btn grow nav" data-act="nav">🧭 Πλοήγηση</button>':''}<button class="btn grow${v.location?'':' primary'}" data-act="park">📍 ${v.location?'Αλλαγή θέσης':'Θέση'}</button>${CAN&&inside?'<button class="btn grow" data-act="need">🔔 Φέρτε το</button>':''}${CAN?'<button class="btn grow" data-act="edit">Επεξεργασία</button>':''}<button class="btn go grow" data-act="exit">Έφυγε ✓</button>${CAN?'<button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button>':''}</div>`:
+    ${inside?`<div class="actions">${mapApi?.hasSpot(v.location, v.mapId)?'<button class="btn grow" data-act="map"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.2v13.6L9 17.6l6 2.2 6-2.2V4.2L15 6.4 9 4zM9 4v13.6M15 6.4v13.4"/></svg>Στον χάρτη</button>':''}${mapApi?.coords?.(v.location, v.mapId)?'<button class="btn grow nav" data-act="nav">🧭 Πλοήγηση</button>':''}<button class="btn grow${v.location?'':' primary'}" data-act="park">📍 ${v.location?'Αλλαγή θέσης':'Θέση'}</button>${CAN&&inside?'<button class="btn grow" data-act="need">🔔 Φέρτε το</button>':''}${CAN&&inside?'<button class="btn grow" data-act="link">📲 Link SMS</button>':''}${CAN?'<button class="btn grow" data-act="edit">Επεξεργασία</button>':''}<button class="btn go grow" data-act="exit">Έφυγε ✓</button>${CAN?'<button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button>':''}</div>`:
       CAN ? `<div class="actions"><button class="btn grow" data-act="again">Ξανά στο παρκινγκ</button><button class="btn" data-act="del" aria-label="Διαγραφή" title="Διαγραφή">🗑</button></div>` : ''}
     </div></div>
   </div>`;
@@ -803,9 +826,11 @@ $('#form').addEventListener('submit', async e=>{
   }
   if (!data.plateKey || (!CAN && !data.location)) return;
   try {
+    let made = null;
     if (editing?.id) await store.update(editing.id, data);
-    else await store.add({ ...data, by: staff() });
+    else made = await store.add({ ...data, by: staff() });
     dlg.close(); toast(editing?.id ? 'Ενημερώθηκε' : 'Καταχωρήθηκε ✓');
+    if (made?.ct && data.phone) openLink({ plate:data.plate, phone:data.phone, ct:made.ct });
     if (!editing?.id) $('#q').value = '';
   } catch(err){ toast('Σφάλμα: '+err.message); }
 });
@@ -1278,6 +1303,7 @@ $('#list').addEventListener('click', async e=>{
   if (btn.dataset.act==='map') mapApi.open({ mode:'browse', focus: v.location, mapId: v.mapId });
   if (btn.dataset.act==='edit') openForm(v);
   if (btn.dataset.act==='park') parkOnMap(v);
+  if (btn.dataset.act==='link'){ try { const ct = await store.ensureLink(v); openLink({ plate:v.plate, phone:v.phone||'', ct }); } catch(err){ toast('Σφάλμα: '+err.message); } }
   if (btn.dataset.act==='need'){
     const prev = reqs.find(r => r.vehicleId === v.id && !r.doneAt && Date.now() - r.at < REQ_TTL);
     if (prev && Date.now() - prev.at < 30000) return toast('Μόλις στάλθηκε — περίμενε λίγο');
@@ -1317,6 +1343,17 @@ function renderPlaces(){
   $('#plList').innerHTML = html || '<div class="empty">Δεν υπάρχουν θέσεις στον χάρτη ακόμα.</div>';
 }
 $('#listF').onclick = ()=>{ $('#plQ').value = ''; renderPlaces(); $('#plDlg').showModal(); document.activeElement?.blur?.(); };
+function openLink({plate, phone, ct}){
+  const url = location.origin + '/r/' + ct;
+  const msg = `Το όχημά σας (${plate}) παραλήφθηκε. Όταν θέλετε να σας το φέρουμε, πατήστε εδώ: ${url}`;
+  const upd = () => { const p = $('#lkPh').value.replace(/[^\d+]/g,''); const ios = /iP(hone|ad|od)/.test(navigator.userAgent); $('#lkSms').href = `sms:${p}${ios?'&':'?'}body=${encodeURIComponent(msg)}`; };
+  $('#lkPh').value = phone || ''; $('#lkU').textContent = url; upd();
+  $('#lkPh').oninput = upd;
+  $('#lkCp').onclick = async () => { try { await navigator.clipboard.writeText(msg); toast('Αντιγράφηκε ✓'); } catch { toast(url); } };
+  $('#lkSms').onclick = () => setTimeout(()=>$('#lkDlg').close(), 400);
+  $('#lkDlg').showModal(); document.activeElement?.blur?.();
+}
+$('#lkX').onclick = ()=>$('#lkDlg').close();
 $('#plX').onclick = ()=>$('#plDlg').close();
 $('#plQ').addEventListener('input', renderPlaces);
 $('#plList').addEventListener('click', e=>{ const b = e.target.closest('.pli'); if (!b) return; $('#fLoc').value = b.dataset.l; pickedMap = b.dataset.m || null; $('#plDlg').close(); });
@@ -1336,6 +1373,7 @@ mapApi = initMap({
 // Προφόρτωση της αναγνώρισης πινακίδας στο παρασκήνιο, ώστε η κάμερα να ανοίγει αμέσως (εκτός αν ο χρήστης έχει οικονομία δεδομένων)
 setTimeout(() => { if (!navigator.connection?.saveData) loadAlpr().catch(() => {}); }, 6000);
 // ---- Ειδοποιήσεις «χρειάζεται το όχημα» ----
+const mkToken = () => { const a = new Uint8Array(10); crypto.getRandomValues(a); return [...a].map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,16); };
 const REQ_TTL = 6*3600*1000;
 let reqs = [], reqFirst = true; const reqSeen = new Set();
 const reqBar = document.createElement('div'); reqBar.id = 'reqBar'; document.body.append(reqBar);
