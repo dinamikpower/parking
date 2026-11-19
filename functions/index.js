@@ -7,13 +7,13 @@ admin.initializeApp();
 exports.notifyRequest = onDocumentCreated({ document: 'requests/{id}', region: 'europe-west1' }, async event => {
   const r = event.data && event.data.data();
   if (!r) return;
-  const snap = await admin.firestore().collection('pushTokens').where('head', '==', false).get();
+  const snap = await admin.firestore().collection('pushTokens').where('head', '==', !!r.fromCustomer).get();   // αίτημα πελάτη → μόνο επικεφαλής· αίτημα προσωπικού → υπάλληλοι
   const tokens = snap.docs.map(d => d.id);
   if (!tokens.length) return;
   const res = await admin.messaging().sendEachForMulticast({
     tokens,
     data: {
-      title: '🔔 Ζητείται το όχημα',
+      title: r.fromCustomer ? '🔔 Ο πελάτης ζητά το όχημα' : '🔔 Ζητείται το όχημα',
       body: `${r.plate || ''}${r.location ? ' · 📍 ' + r.location : ''}${r.by ? ' · από ' + r.by : ''}`,
       vehicleId: String(r.vehicleId || ''),
       tag: event.params.id,
